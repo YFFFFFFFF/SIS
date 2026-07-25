@@ -1,0 +1,35 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: iids
+  profiles:
+    active: dev
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+iids:
+  security:
+    jwt-secret: change-this-m1-demo-secret-key-please-32bytes-min
+    jwt-expire-seconds: 86400
+  formula-version: fin-m1-1.0.0
+  engine-version: 0.1.0
+  report-dir: ./data/reports
+  upload-dir: ./data/uploads
+  worker:
+    enabled: true
+    poll-ms: 1000
+
+logging:
+  level:
+    com.sis.iids: INFO
