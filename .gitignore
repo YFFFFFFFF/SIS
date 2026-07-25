@@ -1,4 +1,4 @@
-# Java
+﻿# Java
 backend/target/
 backend/.mvn/wrapper/maven-wrapper.jar
 *.class
@@ -29,3 +29,7 @@ data/
 uploads/
 reports/
 logs/
+
+# Local git worktrees
+.worktrees/
+
