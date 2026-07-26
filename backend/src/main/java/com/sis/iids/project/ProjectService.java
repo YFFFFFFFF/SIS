@@ -1,5 +1,6 @@
 package com.sis.iids.project;
 
+import com.sis.iids.audit.AuditService;
 import com.sis.iids.common.error.BusinessException;
 import com.sis.iids.common.error.ErrorCode;
 import org.springframework.stereotype.Service;
@@ -11,9 +12,11 @@ import java.util.List;
 public class ProjectService {
 
     private final ProjectRepository projectRepository;
+    private final AuditService auditService;
 
-    public ProjectService(ProjectRepository projectRepository) {
+    public ProjectService(ProjectRepository projectRepository, AuditService auditService) {
         this.projectRepository = projectRepository;
+        this.auditService = auditService;
     }
 
     @Transactional
@@ -31,13 +34,32 @@ public class ProjectService {
         project.setOwnerId(request.ownerId());
         project.setTags(blankToNull(request.tags()));
         project.setDescription(blankToNull(request.description()));
-        return ProjectResponse.from(projectRepository.save(project));
+        Project saved = projectRepository.save(project);
+        auditService.record("PROJECT_CREATED", "PROJECT", saved.getId().toString(), null, projectSnapshot(saved));
+        return ProjectResponse.from(saved);
+    }
+
+    @Transactional
+    public ProjectResponse update(Long id, ProjectUpdateRequest request) {
+        Project project = findProject(id);
+        String before = projectSnapshot(project);
+
+        project.setName(request.name().trim());
+        project.setProjectType(blankToNull(request.projectType()));
+        project.setStatus(request.status());
+        project.setDepartment(blankToNull(request.department()));
+        project.setOwnerId(request.ownerId());
+        project.setTags(blankToNull(request.tags()));
+        project.setDescription(blankToNull(request.description()));
+
+        Project saved = projectRepository.save(project);
+        auditService.record("PROJECT_UPDATED", "PROJECT", saved.getId().toString(), before, projectSnapshot(saved));
+        return ProjectResponse.from(saved);
     }
 
     @Transactional(readOnly = true)
     public ProjectResponse get(Long id) {
-        return ProjectResponse.from(projectRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Project not found")));
+        return ProjectResponse.from(findProject(id));
     }
 
     @Transactional(readOnly = true)
@@ -45,6 +67,20 @@ public class ProjectService {
         return projectRepository.findAllByOrderByCreatedAtDesc().stream()
                 .map(ProjectResponse::from)
                 .toList();
+    }
+
+    private Project findProject(Long id) {
+        return projectRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Project not found"));
+    }
+
+    private String projectSnapshot(Project project) {
+        return "code=%s;name=%s;status=%s;department=%s;tags=%s".formatted(
+                project.getCode(),
+                project.getName(),
+                project.getStatus(),
+                project.getDepartment(),
+                project.getTags());
     }
 
     private String blankToNull(String value) {

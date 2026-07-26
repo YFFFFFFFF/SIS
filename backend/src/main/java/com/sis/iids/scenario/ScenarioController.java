@@ -38,6 +38,12 @@ public class ScenarioController {
         return ApiResponse.ok(scenarioService.get(id));
     }
 
+    @PutMapping("/scenarios/{id}")
+    public ApiResponse<ScenarioResponse> update(@PathVariable Long id,
+                                                @Valid @RequestBody ScenarioUpdateRequest request) {
+        return ApiResponse.ok(scenarioService.update(id, request));
+    }
+
     @PutMapping("/scenarios/{id}/parameters")
     public ApiResponse<ParameterSetResponse> upsertParameters(@PathVariable Long id,
                                                               @Valid @RequestBody ParameterSetRequest request) {

@@ -26,29 +26,7 @@ class ScenarioParameterApiIntegrationTest {
     @Test
     void createsScenarioAndUpsertsParameterSet() throws Exception {
         Long projectId = createProject();
-
-        String scenarioRequest = """
-                {
-                  "name": "基准测算方案",
-                  "horizonYears": 5,
-                  "constructionYears": 1,
-                  "remarks": "M1 baseline scenario"
-                }
-                """;
-
-        String scenarioResponse = mockMvc.perform(post("/api/v1/projects/{projectId}/scenarios", projectId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(scenarioRequest))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("SUCCESS"))
-                .andExpect(jsonPath("$.data.id", notNullValue()))
-                .andExpect(jsonPath("$.data.projectId").value(projectId))
-                .andExpect(jsonPath("$.data.name").value("基准测算方案"))
-                .andExpect(jsonPath("$.data.status").value("DRAFT"))
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-        Long scenarioId = extractId(scenarioResponse);
+        Long scenarioId = createScenario(projectId, "Baseline Scenario");
 
         mockMvc.perform(get("/api/v1/scenarios/{id}", scenarioId))
                 .andExpect(status().isOk())
@@ -88,6 +66,42 @@ class ScenarioParameterApiIntegrationTest {
                 .andExpect(jsonPath("$.data.fixedOperatingCost").value(10000));
     }
 
+    @Test
+    void updatesScenarioFieldsAndWritesAuditEvents() throws Exception {
+        Long projectId = createProject();
+        Long scenarioId = createScenario(projectId, "Original Scenario");
+
+        String updateRequest = """
+                {
+                  "name": "Updated Scenario",
+                  "status": "ACTIVE",
+                  "horizonYears": 8,
+                  "constructionYears": 2,
+                  "remarks": "Updated scenario remarks"
+                }
+                """;
+
+        mockMvc.perform(put("/api/v1/scenarios/{id}", scenarioId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateRequest))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("SUCCESS"))
+                .andExpect(jsonPath("$.data.id").value(scenarioId))
+                .andExpect(jsonPath("$.data.projectId").value(projectId))
+                .andExpect(jsonPath("$.data.name").value("Updated Scenario"))
+                .andExpect(jsonPath("$.data.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.data.horizonYears").value(8))
+                .andExpect(jsonPath("$.data.constructionYears").value(2))
+                .andExpect(jsonPath("$.data.remarks").value("Updated scenario remarks"));
+
+        mockMvc.perform(get("/api/v1/audit-events")
+                        .param("targetType", "SCENARIO")
+                        .param("targetId", scenarioId.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].action").value("SCENARIO_CREATED"))
+                .andExpect(jsonPath("$.data[1].action").value("SCENARIO_UPDATED"));
+    }
+
     private Long createProject() throws Exception {
         String request = """
                 {
@@ -100,6 +114,31 @@ class ScenarioParameterApiIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(request))
                 .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        return extractId(response);
+    }
+
+    private Long createScenario(Long projectId, String name) throws Exception {
+        String request = """
+                {
+                  "name": "%s",
+                  "horizonYears": 5,
+                  "constructionYears": 1,
+                  "remarks": "M1 baseline scenario"
+                }
+                """.formatted(name);
+
+        String response = mockMvc.perform(post("/api/v1/projects/{projectId}/scenarios", projectId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("SUCCESS"))
+                .andExpect(jsonPath("$.data.id", notNullValue()))
+                .andExpect(jsonPath("$.data.projectId").value(projectId))
+                .andExpect(jsonPath("$.data.name").value(name))
+                .andExpect(jsonPath("$.data.status").value("DRAFT"))
                 .andReturn()
                 .getResponse()
                 .getContentAsString();

@@ -1,5 +1,6 @@
 package com.sis.iids.scenario;
 
+import com.sis.iids.audit.AuditService;
 import com.sis.iids.common.error.BusinessException;
 import com.sis.iids.common.error.ErrorCode;
 import com.sis.iids.project.ProjectRepository;
@@ -14,13 +15,16 @@ public class ScenarioService {
     private final ProjectRepository projectRepository;
     private final ScenarioRepository scenarioRepository;
     private final ParameterSetRepository parameterSetRepository;
+    private final AuditService auditService;
 
     public ScenarioService(ProjectRepository projectRepository,
                            ScenarioRepository scenarioRepository,
-                           ParameterSetRepository parameterSetRepository) {
+                           ParameterSetRepository parameterSetRepository,
+                           AuditService auditService) {
         this.projectRepository = projectRepository;
         this.scenarioRepository = scenarioRepository;
         this.parameterSetRepository = parameterSetRepository;
+        this.auditService = auditService;
     }
 
     @Transactional
@@ -34,7 +38,25 @@ public class ScenarioService {
         scenario.setHorizonYears(request.horizonYears());
         scenario.setConstructionYears(request.constructionYears());
         scenario.setRemarks(blankToNull(request.remarks()));
-        return ScenarioResponse.from(scenarioRepository.save(scenario));
+        Scenario saved = scenarioRepository.save(scenario);
+        auditService.record("SCENARIO_CREATED", "SCENARIO", saved.getId().toString(), null, scenarioSnapshot(saved));
+        return ScenarioResponse.from(saved);
+    }
+
+    @Transactional
+    public ScenarioResponse update(Long id, ScenarioUpdateRequest request) {
+        Scenario scenario = findScenario(id);
+        String before = scenarioSnapshot(scenario);
+
+        scenario.setName(request.name().trim());
+        scenario.setStatus(request.status());
+        scenario.setHorizonYears(request.horizonYears());
+        scenario.setConstructionYears(request.constructionYears());
+        scenario.setRemarks(blankToNull(request.remarks()));
+
+        Scenario saved = scenarioRepository.save(scenario);
+        auditService.record("SCENARIO_UPDATED", "SCENARIO", saved.getId().toString(), before, scenarioSnapshot(saved));
+        return ScenarioResponse.from(saved);
     }
 
     @Transactional(readOnly = true)
@@ -82,6 +104,15 @@ public class ScenarioService {
     private Scenario findScenario(Long id) {
         return scenarioRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Scenario not found"));
+    }
+
+    private String scenarioSnapshot(Scenario scenario) {
+        return "projectId=%s;name=%s;status=%s;horizonYears=%s;constructionYears=%s".formatted(
+                scenario.getProjectId(),
+                scenario.getName(),
+                scenario.getStatus(),
+                scenario.getHorizonYears(),
+                scenario.getConstructionYears());
     }
 
     private String blankToNull(String value) {

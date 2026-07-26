@@ -5,6 +5,7 @@ import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -24,6 +25,12 @@ public class ProjectController {
     @PostMapping
     public ApiResponse<ProjectResponse> create(@Valid @RequestBody ProjectCreateRequest request) {
         return ApiResponse.ok(projectService.create(request));
+    }
+
+    @PutMapping("/{id}")
+    public ApiResponse<ProjectResponse> update(@PathVariable Long id,
+                                               @Valid @RequestBody ProjectUpdateRequest request) {
+        return ApiResponse.ok(projectService.update(id, request));
     }
 
     @GetMapping("/{id}")
