@@ -34,7 +34,7 @@ public class CalculationController {
     @PostMapping("/scenarios/{scenarioId}/calculation-tasks")
     public ApiResponse<CalculationRunResponse> run(@PathVariable Long scenarioId,
                                                    @Valid @RequestBody CalculationTaskRequest request) {
-        return ApiResponse.ok(calculationService.runFinancialCalculation(scenarioId, request));
+        return ApiResponse.ok(calculationService.createCalculationTask(scenarioId, request));
     }
 
     @GetMapping("/calculation-tasks/{taskId}")

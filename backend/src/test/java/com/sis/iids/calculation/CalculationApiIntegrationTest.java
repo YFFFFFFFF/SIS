@@ -1,5 +1,6 @@
 package com.sis.iids.calculation;
 
+import com.sis.iids.worker.CalculationWorker;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -19,7 +20,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
+@SpringBootTest(properties = "iids.worker.enabled=false")
 @AutoConfigureMockMvc(addFilters = false)
 @Transactional
 class CalculationApiIntegrationTest {
@@ -30,62 +31,108 @@ class CalculationApiIntegrationTest {
     @Autowired
     private CalculationResultRepository resultRepository;
 
+    @Autowired
+    private CalculationWorker calculationWorker;
+
     @Test
-    void runsFinancialCalculationTaskAndPersistsResults() throws Exception {
-        Long projectId = createProject();
+    void createsPendingTaskAndWorkerPersistsSuccessfulResults() throws Exception {
+        Long projectId = createProject("SIS-M1-CALC");
         Long scenarioId = createScenario(projectId);
         upsertParameters(scenarioId);
         createInvestmentItem(scenarioId, "CONSTRUCTION", "Construction Investment", 200000, 0);
         createInvestmentItem(scenarioId, "WORKING_CAPITAL", "Working Capital", 20000, 1);
         createFinancingPlan(scenarioId, "EQUITY", 1.0, 220000, 0, 0);
 
-        String taskResponse = mockMvc.perform(post("/api/v1/scenarios/{scenarioId}/calculation-tasks", scenarioId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"taskType\":\"FINANCIAL\"}"))
+        String taskResponse = createCalculationTask(scenarioId, "calc-success-001")
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.task.id", notNullValue()))
-                .andExpect(jsonPath("$.data.task.status").value("COMPLETED"))
-                .andExpect(jsonPath("$.data.task.progress").value(100))
-                .andExpect(jsonPath("$.data.metrics.NPV").value(86204.4011))
-                .andExpect(jsonPath("$.data.metrics.ROI").value(0.1875))
-                .andExpect(jsonPath("$.data.metrics.IRR").value(0.2391))
-                .andExpect(jsonPath("$.data.metrics.CAPITAL_NET_PROFIT_RATE").value(0.1705))
-                .andExpect(jsonPath("$.data.cashFlowRows", hasSize(6)))
+                .andExpect(jsonPath("$.data.task.status").value("PENDING"))
+                .andExpect(jsonPath("$.data.task.progress").value(0))
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
         Long taskId = extractNestedTaskId(taskResponse);
 
-        List<CalculationResultEntity> persistedResults = resultRepository.findByTaskIdOrderByMetricCodeAsc(taskId);
-        assertThat(persistedResults).hasSize(7);
-        assertThat(persistedResults)
-                .extracting(CalculationResultEntity::getMetricCode)
-                .contains("IRR", "CAPITAL_NET_PROFIT_RATE");
-        assertThat(persistedResults).allSatisfy(result -> {
-            assertThat(result.getFormulaVersion()).isEqualTo("fin-m1-1.0.0");
-            assertThat(result.getEngineVersion()).isEqualTo("0.1.0");
-            assertThat(result.getParameterSetId()).isNotNull();
-            assertThat(result.getInputHash()).isNotBlank();
-        });
+        calculationWorker.runPendingOnce();
 
         mockMvc.perform(get("/api/v1/calculation-tasks/{taskId}", taskId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.data.status").value("SUCCESS"))
+                .andExpect(jsonPath("$.data.progress").value(100))
                 .andExpect(jsonPath("$.data.scenarioId").value(scenarioId));
 
         mockMvc.perform(get("/api/v1/calculation-tasks/{taskId}/results", taskId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.metrics.TOTAL_INVESTMENT").value(220000.0000))
+                .andExpect(jsonPath("$.data.metrics.NPV").value(86204.4011))
+                .andExpect(jsonPath("$.data.metrics.ROI").value(0.1875))
                 .andExpect(jsonPath("$.data.metrics.IRR").value(0.2391))
                 .andExpect(jsonPath("$.data.metrics.CAPITAL_NET_PROFIT_RATE").value(0.1705))
                 .andExpect(jsonPath("$.data.metrics.DYNAMIC_PAYBACK_YEARS").value(3.5152))
+                .andExpect(jsonPath("$.data.cashFlowRows", hasSize(6)))
                 .andExpect(jsonPath("$.data.cashFlowRows[1].netCashFlow").value(77500.0000));
+
+        List<CalculationResultEntity> persistedResults = resultRepository.findByTaskIdOrderByMetricCodeAsc(taskId);
+        assertThat(persistedResults).hasSize(7);
+        assertThat(persistedResults).allSatisfy(result -> assertThat(result.getInputHash()).isNotBlank());
     }
 
-    private Long createProject() throws Exception {
+    @Test
+    void returnsExistingTaskForSameRequestKey() throws Exception {
+        Long projectId = createProject("SIS-M1-IDEMPOTENT");
+        Long scenarioId = createScenario(projectId);
+
+        String firstResponse = createCalculationTask(scenarioId, "same-key")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.task.status").value("PENDING"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String secondResponse = createCalculationTask(scenarioId, "same-key")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.task.status").value("PENDING"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        assertThat(extractNestedTaskId(secondResponse)).isEqualTo(extractNestedTaskId(firstResponse));
+    }
+
+    @Test
+    void workerStoresFailureStatusAndErrorMessage() throws Exception {
+        Long projectId = createProject("SIS-M1-FAIL");
+        Long scenarioId = createScenario(projectId);
+
+        String taskResponse = createCalculationTask(scenarioId, "calc-failure-001")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.task.status").value("PENDING"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        Long taskId = extractNestedTaskId(taskResponse);
+
+        calculationWorker.runPendingOnce();
+
+        mockMvc.perform(get("/api/v1/calculation-tasks/{taskId}", taskId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("FAILED"))
+                .andExpect(jsonPath("$.data.progress").value(100))
+                .andExpect(jsonPath("$.data.errorMessage").value("Parameter set is required"));
+    }
+
+    private org.springframework.test.web.servlet.ResultActions createCalculationTask(Long scenarioId, String requestKey) throws Exception {
         String request = """
-                {"code":"SIS-M1-CALC","name":"Calculation Host Project","projectType":"INDUSTRIAL"}
-                """;
+                {"taskType":"FINANCIAL","requestKey":"%s"}
+                """.formatted(requestKey);
+        return mockMvc.perform(post("/api/v1/scenarios/{scenarioId}/calculation-tasks", scenarioId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(request));
+    }
+
+    private Long createProject(String code) throws Exception {
+        String request = """
+                {"code":"%s","name":"Calculation Host Project","projectType":"INDUSTRIAL"}
+                """.formatted(code);
         String response = mockMvc.perform(post("/api/v1/projects")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(request))

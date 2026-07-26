@@ -89,26 +89,60 @@ public class CalculationService {
     }
 
     @Transactional
-    public CalculationRunResponse runFinancialCalculation(Long scenarioId, CalculationTaskRequest request) {
-        Scenario scenario = findScenario(scenarioId);
-        ParameterSet parameterSet = parameterSetRepository.findByScenarioId(scenarioId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.BAD_REQUEST, "Parameter set is required"));
+    public CalculationRunResponse createCalculationTask(Long scenarioId, CalculationTaskRequest request) {
+        findScenario(scenarioId);
+        String requestKey = blankToNull(request.requestKey());
+        if (requestKey != null) {
+            var existing = taskRepository.findByScenarioIdAndRequestKey(scenarioId, requestKey);
+            if (existing.isPresent()) {
+                CalculationTask task = existing.get();
+                return new CalculationRunResponse(CalculationTaskResponse.from(task), metricsForTask(task.getId()), rowsForTask(task.getId()));
+            }
+        }
 
         CalculationTask task = new CalculationTask();
         task.setScenarioId(scenarioId);
         task.setTaskType(request.taskType().trim().toUpperCase(Locale.ROOT));
+        task.setStatus(CalculationStatus.PENDING);
+        task.setProgress(0);
+        task.setRequestKey(requestKey);
+        task = taskRepository.save(task);
+        return new CalculationRunResponse(CalculationTaskResponse.from(task), Map.of(), List.of());
+    }
+
+    @Transactional
+    public boolean runNextPendingTask() {
+        return taskRepository.findFirstByStatusOrderByCreatedAtAsc(CalculationStatus.PENDING)
+                .map(task -> {
+                    executeTask(task.getId());
+                    return true;
+                })
+                .orElse(false);
+    }
+
+    @Transactional
+    public CalculationRunResponse executeTask(Long taskId) {
+        CalculationTask task = findTask(taskId);
+        if (task.getStatus() != CalculationStatus.PENDING) {
+            return new CalculationRunResponse(CalculationTaskResponse.from(task), metricsForTask(task.getId()), rowsForTask(task.getId()));
+        }
+
         task.setStatus(CalculationStatus.RUNNING);
         task.setProgress(10);
+        task.setErrorMessage(null);
         task.setStartedAt(LocalDateTime.now());
         task = taskRepository.save(task);
 
         try {
+            Scenario scenario = findScenario(task.getScenarioId());
+            ParameterSet parameterSet = parameterSetRepository.findByScenarioId(task.getScenarioId())
+                    .orElseThrow(() -> new BusinessException(ErrorCode.BAD_REQUEST, "Parameter set is required"));
             FinancialInput input = buildInput(scenario, parameterSet);
             String inputHash = inputHash(input);
             FinancialResult result = new FinancialEngine().calculate(input);
             persistRows(task, result);
             Map<String, BigDecimal> metrics = persistMetrics(task, parameterSet, result, inputHash);
-            task.setStatus(CalculationStatus.COMPLETED);
+            task.setStatus(CalculationStatus.SUCCESS);
             task.setProgress(100);
             task.setFinishedAt(LocalDateTime.now());
             task = taskRepository.save(task);
@@ -119,8 +153,9 @@ public class CalculationService {
             task.setProgress(100);
             task.setErrorMessage(ex.getMessage());
             task.setFinishedAt(LocalDateTime.now());
-            taskRepository.save(task);
-            throw ex;
+            task = taskRepository.save(task);
+            auditService.record("CALCULATION_FAILED", "CALCULATION_TASK", task.getId().toString(), null, ex.getMessage());
+            return new CalculationRunResponse(CalculationTaskResponse.from(task), Map.of(), List.of());
         }
     }
 
@@ -293,6 +328,14 @@ public class CalculationService {
     private String value(Object value) {
         return value == null ? "" : value.toString();
     }
+
+    private String blankToNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
+    }
+
     private Scenario findScenario(Long scenarioId) {
         return scenarioRepository.findById(scenarioId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Scenario not found"));
