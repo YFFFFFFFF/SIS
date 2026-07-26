@@ -1,5 +1,6 @@
 package com.sis.iids.calculation;
 
+import com.sis.iids.audit.AuditService;
 import com.sis.iids.common.error.BusinessException;
 import com.sis.iids.common.error.ErrorCode;
 import com.sis.iids.engine.financial.CashFlowPeriod;
@@ -33,6 +34,7 @@ public class CalculationService {
     private final CalculationTaskRepository taskRepository;
     private final CashFlowRowRepository cashFlowRowRepository;
     private final CalculationResultRepository resultRepository;
+    private final AuditService auditService;
     private final String defaultFormulaVersion;
     private final String engineVersion;
 
@@ -43,6 +45,7 @@ public class CalculationService {
                               CalculationTaskRepository taskRepository,
                               CashFlowRowRepository cashFlowRowRepository,
                               CalculationResultRepository resultRepository,
+                              AuditService auditService,
                               @Value("${iids.formula-version:fin-m1-1.0.0}") String defaultFormulaVersion,
                               @Value("${iids.engine-version:0.1.0}") String engineVersion) {
         this.scenarioRepository = scenarioRepository;
@@ -52,6 +55,7 @@ public class CalculationService {
         this.taskRepository = taskRepository;
         this.cashFlowRowRepository = cashFlowRowRepository;
         this.resultRepository = resultRepository;
+        this.auditService = auditService;
         this.defaultFormulaVersion = defaultFormulaVersion;
         this.engineVersion = engineVersion;
     }
@@ -104,6 +108,7 @@ public class CalculationService {
             task.setProgress(100);
             task.setFinishedAt(LocalDateTime.now());
             task = taskRepository.save(task);
+            auditService.record("CALCULATION_COMPLETED", "CALCULATION_TASK", task.getId().toString(), null, metrics.toString());
             return new CalculationRunResponse(CalculationTaskResponse.from(task), metrics, rowsForTask(task.getId()));
         } catch (RuntimeException ex) {
             task.setStatus(CalculationStatus.FAILED);
