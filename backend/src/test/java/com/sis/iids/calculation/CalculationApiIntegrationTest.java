@@ -8,6 +8,9 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -24,13 +27,16 @@ class CalculationApiIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private CalculationResultRepository resultRepository;
+
     @Test
     void runsFinancialCalculationTaskAndPersistsResults() throws Exception {
         Long projectId = createProject();
         Long scenarioId = createScenario(projectId);
         upsertParameters(scenarioId);
-        createInvestmentItem(scenarioId, "CONSTRUCTION", "建设投资", 200000, 0);
-        createInvestmentItem(scenarioId, "WORKING_CAPITAL", "流动资金", 20000, 1);
+        createInvestmentItem(scenarioId, "CONSTRUCTION", "Construction Investment", 200000, 0);
+        createInvestmentItem(scenarioId, "WORKING_CAPITAL", "Working Capital", 20000, 1);
         createFinancingPlan(scenarioId, "EQUITY", 1.0, 220000, 0, 0);
 
         String taskResponse = mockMvc.perform(post("/api/v1/scenarios/{scenarioId}/calculation-tasks", scenarioId)
@@ -42,11 +48,25 @@ class CalculationApiIntegrationTest {
                 .andExpect(jsonPath("$.data.task.progress").value(100))
                 .andExpect(jsonPath("$.data.metrics.NPV").value(86204.4011))
                 .andExpect(jsonPath("$.data.metrics.ROI").value(0.1875))
+                .andExpect(jsonPath("$.data.metrics.IRR").value(0.2391))
+                .andExpect(jsonPath("$.data.metrics.CAPITAL_NET_PROFIT_RATE").value(0.1705))
                 .andExpect(jsonPath("$.data.cashFlowRows", hasSize(6)))
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
         Long taskId = extractNestedTaskId(taskResponse);
+
+        List<CalculationResultEntity> persistedResults = resultRepository.findByTaskIdOrderByMetricCodeAsc(taskId);
+        assertThat(persistedResults).hasSize(7);
+        assertThat(persistedResults)
+                .extracting(CalculationResultEntity::getMetricCode)
+                .contains("IRR", "CAPITAL_NET_PROFIT_RATE");
+        assertThat(persistedResults).allSatisfy(result -> {
+            assertThat(result.getFormulaVersion()).isEqualTo("fin-m1-1.0.0");
+            assertThat(result.getEngineVersion()).isEqualTo("0.1.0");
+            assertThat(result.getParameterSetId()).isNotNull();
+            assertThat(result.getInputHash()).isNotBlank();
+        });
 
         mockMvc.perform(get("/api/v1/calculation-tasks/{taskId}", taskId))
                 .andExpect(status().isOk())
@@ -56,6 +76,8 @@ class CalculationApiIntegrationTest {
         mockMvc.perform(get("/api/v1/calculation-tasks/{taskId}/results", taskId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.metrics.TOTAL_INVESTMENT").value(220000.0000))
+                .andExpect(jsonPath("$.data.metrics.IRR").value(0.2391))
+                .andExpect(jsonPath("$.data.metrics.CAPITAL_NET_PROFIT_RATE").value(0.1705))
                 .andExpect(jsonPath("$.data.metrics.DYNAMIC_PAYBACK_YEARS").value(3.5152))
                 .andExpect(jsonPath("$.data.cashFlowRows[1].netCashFlow").value(77500.0000));
     }
@@ -76,7 +98,7 @@ class CalculationApiIntegrationTest {
 
     private Long createScenario(Long projectId) throws Exception {
         String request = """
-                {"name":"基准测算方案","horizonYears":5,"constructionYears":1,"remarks":"calculation baseline"}
+                {"name":"Baseline Calculation Scenario","horizonYears":5,"constructionYears":1,"remarks":"calculation baseline"}
                 """;
         String response = mockMvc.perform(post("/api/v1/projects/{projectId}/scenarios", projectId)
                         .contentType(MediaType.APPLICATION_JSON)

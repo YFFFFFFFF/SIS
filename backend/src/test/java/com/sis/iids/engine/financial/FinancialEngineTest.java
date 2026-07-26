@@ -36,6 +36,8 @@ class FinancialEngineTest {
         assertThat(result.getRows()).hasSize(6);
         assertThat(result.getNpv()).isEqualByComparingTo("86204.4011");
         assertThat(result.getRoi()).isEqualByComparingTo("0.1875");
+        assertThat(result.getIrr()).isEqualByComparingTo("0.2391");
+        assertThat(result.getCapitalNetProfitRate()).isEqualByComparingTo("0.1705");
         assertThat(result.getStaticPaybackYears()).isEqualByComparingTo("2.8387");
         assertThat(result.getDynamicPaybackYears()).isEqualByComparingTo("3.5152");
 

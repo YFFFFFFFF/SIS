@@ -12,6 +12,8 @@ public class FinancialResult {
     private BigDecimal totalInvestment = BigDecimal.ZERO;
     private BigDecimal npv = BigDecimal.ZERO;
     private BigDecimal roi = BigDecimal.ZERO;
+    private BigDecimal irr = BigDecimal.ZERO;
+    private BigDecimal capitalNetProfitRate = BigDecimal.ZERO;
     private BigDecimal staticPaybackYears = BigDecimal.ZERO;
     private BigDecimal dynamicPaybackYears = BigDecimal.ZERO;
     private List<CashFlowPeriod> rows = new ArrayList<>();
@@ -38,6 +40,22 @@ public class FinancialResult {
 
     public void setRoi(BigDecimal roi) {
         this.roi = roi;
+    }
+
+    public BigDecimal getIrr() {
+        return irr;
+    }
+
+    public void setIrr(BigDecimal irr) {
+        this.irr = irr;
+    }
+
+    public BigDecimal getCapitalNetProfitRate() {
+        return capitalNetProfitRate;
+    }
+
+    public void setCapitalNetProfitRate(BigDecimal capitalNetProfitRate) {
+        this.capitalNetProfitRate = capitalNetProfitRate;
     }
 
     public BigDecimal getStaticPaybackYears() {

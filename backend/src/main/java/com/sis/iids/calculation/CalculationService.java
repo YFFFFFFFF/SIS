@@ -17,6 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -101,9 +104,10 @@ public class CalculationService {
 
         try {
             FinancialInput input = buildInput(scenario, parameterSet);
+            String inputHash = inputHash(input);
             FinancialResult result = new FinancialEngine().calculate(input);
             persistRows(task, result);
-            Map<String, BigDecimal> metrics = persistMetrics(task, parameterSet, result);
+            Map<String, BigDecimal> metrics = persistMetrics(task, parameterSet, result, inputHash);
             task.setStatus(CalculationStatus.COMPLETED);
             task.setProgress(100);
             task.setFinishedAt(LocalDateTime.now());
@@ -207,11 +211,16 @@ public class CalculationService {
         }
     }
 
-    private Map<String, BigDecimal> persistMetrics(CalculationTask task, ParameterSet parameterSet, FinancialResult result) {
+    private Map<String, BigDecimal> persistMetrics(CalculationTask task,
+                                                   ParameterSet parameterSet,
+                                                   FinancialResult result,
+                                                   String inputHash) {
         Map<String, BigDecimal> metrics = new LinkedHashMap<>();
         metrics.put("TOTAL_INVESTMENT", result.getTotalInvestment());
         metrics.put("NPV", result.getNpv());
         metrics.put("ROI", result.getRoi());
+        metrics.put("IRR", result.getIrr());
+        metrics.put("CAPITAL_NET_PROFIT_RATE", result.getCapitalNetProfitRate());
         metrics.put("STATIC_PAYBACK_YEARS", result.getStaticPaybackYears());
         metrics.put("DYNAMIC_PAYBACK_YEARS", result.getDynamicPaybackYears());
         String formulaVersion = parameterSet.getFormulaVersion() == null ? defaultFormulaVersion : parameterSet.getFormulaVersion();
@@ -224,6 +233,7 @@ public class CalculationService {
             entity.setFormulaVersion(formulaVersion);
             entity.setEngineVersion(engineVersion);
             entity.setParameterSetId(parameterSet.getId());
+            entity.setInputHash(inputHash);
             resultRepository.save(entity);
         }
         return metrics;
@@ -243,6 +253,46 @@ public class CalculationService {
                 .toList();
     }
 
+    private String inputHash(FinancialInput input) {
+        String source = String.join("|",
+                value(input.getConstructionYears()),
+                value(input.getHorizonYears()),
+                decimal(input.getWacc()),
+                decimal(input.getTaxRate()),
+                value(input.getDepreciationYears()),
+                decimal(input.getResidualRate()),
+                decimal(input.getPricePerUnit()),
+                decimal(input.getUnitCost()),
+                decimal(input.getAnnualOutput()),
+                decimal(input.getFixedOperatingCost()),
+                decimal(input.getConstructionInvestment()),
+                decimal(input.getWorkingCapital()),
+                decimal(input.getInterestDuringConstruction()),
+                decimal(input.getEquityRatio()),
+                decimal(input.getLoanRatio()),
+                decimal(input.getLoanInterestRate()),
+                value(input.getLoanTermYears()),
+                input.getConstructionSchedule().stream().map(this::decimal).toList().toString());
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(source.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder(hash.length * 2);
+            for (byte b : hash) {
+                hex.append(String.format("%02x", b));
+            }
+            return hex.toString();
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("SHA-256 digest is not available", ex);
+        }
+    }
+
+    private String decimal(BigDecimal value) {
+        return value == null ? "" : value.stripTrailingZeros().toPlainString();
+    }
+
+    private String value(Object value) {
+        return value == null ? "" : value.toString();
+    }
     private Scenario findScenario(Long scenarioId) {
         return scenarioRepository.findById(scenarioId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Scenario not found"));

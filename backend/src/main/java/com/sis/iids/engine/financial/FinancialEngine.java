@@ -68,6 +68,10 @@ public class FinancialEngine {
         result.setRows(rows);
         result.setNpv(scale(npv));
         result.setRoi(scale(safeDivide(netProfit, input.getConstructionInvestment())));
+        result.setIrr(scale(irr(rows)));
+        result.setCapitalNetProfitRate(scale(safeDivide(
+                netProfit,
+                totalInvestment.multiply(input.getEquityRatio(), MC))));
         result.setStaticPaybackYears(scale(payback(rows, false, input.getWacc())));
         result.setDynamicPaybackYears(scale(payback(rows, true, input.getWacc())));
         return result;
@@ -111,6 +115,37 @@ public class FinancialEngine {
         return loanPrincipal.multiply(input.getLoanInterestRate(), MC);
     }
 
+    private BigDecimal irr(List<CashFlowPeriod> rows) {
+        double low = -0.9999d;
+        double high = 10.0d;
+        double lowNpv = npvAtRate(rows, low);
+        double highNpv = npvAtRate(rows, high);
+        if (Double.isNaN(lowNpv) || Double.isNaN(highNpv) || lowNpv * highNpv > 0) {
+            return BigDecimal.ZERO;
+        }
+        for (int i = 0; i < 100; i++) {
+            double mid = (low + high) / 2.0d;
+            double midNpv = npvAtRate(rows, mid);
+            if (Math.abs(midNpv) < 0.000001d) {
+                return BigDecimal.valueOf(mid);
+            }
+            if (lowNpv * midNpv > 0) {
+                low = mid;
+                lowNpv = midNpv;
+            } else {
+                high = mid;
+            }
+        }
+        return BigDecimal.valueOf((low + high) / 2.0d);
+    }
+
+    private double npvAtRate(List<CashFlowPeriod> rows, double rate) {
+        double npv = 0.0d;
+        for (CashFlowPeriod row : rows) {
+            npv += row.getNetCashFlow().doubleValue() / Math.pow(1.0d + rate, row.getPeriodNo());
+        }
+        return npv;
+    }
     private BigDecimal payback(List<CashFlowPeriod> rows, boolean discounted, BigDecimal discountRate) {
         BigDecimal cumulative = BigDecimal.ZERO;
         for (int i = 0; i < rows.size(); i++) {
