@@ -167,3 +167,83 @@ select {
     grid-template-columns: 1fr;
   }
 }
+.workflow-tabs .el-tabs__content {
+  overflow: visible;
+}
+
+.split-panel,
+.triple-panel,
+.stack-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.split-panel {
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+}
+
+.triple-panel {
+  grid-template-columns: minmax(380px, 1.3fr) minmax(280px, 0.85fr) minmax(280px, 0.85fr);
+}
+
+.stack-panel {
+  grid-template-columns: 1fr;
+}
+
+.dense-form {
+  display: grid;
+  gap: 8px;
+}
+
+.dense-form.two-cols {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.form-actions,
+.inline-actions,
+.vertical-actions,
+.card-header-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.form-actions,
+.card-header-row {
+  justify-content: space-between;
+}
+
+.vertical-actions {
+  flex-wrap: wrap;
+}
+
+.inline-actions {
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.request-key {
+  width: 260px;
+}
+
+.audit-input {
+  width: 180px;
+}
+
+.task-summary {
+  margin-top: 16px;
+}
+
+.metric-chart {
+  width: 100%;
+  height: 280px;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 1120px) {
+  .split-panel,
+  .triple-panel,
+  .dense-form.two-cols {
+    grid-template-columns: 1fr;
+  }
+}

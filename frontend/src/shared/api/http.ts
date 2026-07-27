@@ -42,3 +42,13 @@ export async function apiPut<T, B = unknown>(url: string, body?: B): Promise<T> 
   const response = await http.put<ApiResponse<T>>(url, body)
   return response.data.data
 }
+
+export async function apiDelete<T, B = unknown>(url: string, body?: B): Promise<T> {
+  const response = await http.delete<ApiResponse<T>>(url, { data: body })
+  return response.data.data
+}
+
+export async function apiDownload(url: string): Promise<Blob> {
+  const response = await http.get<Blob>(url, { responseType: 'blob' })
+  return response.data
+}
