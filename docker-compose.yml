@@ -1,0 +1,60 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-iids}
+      POSTGRES_USER: ${POSTGRES_USER:-iids}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-iids_dev_password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-iids} -d ${POSTGRES_DB:-iids}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+  backend:
+    build:
+      context: ./backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-iids}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-iids}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-iids_dev_password}
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+      IIDS_SECURITY_JWT_SECRET: ${IIDS_SECURITY_JWT_SECRET:-change-this-dev-only-secret-32bytes-minimum}
+      IIDS_SECURITY_JWT_EXPIRE_SECONDS: ${IIDS_SECURITY_JWT_EXPIRE_SECONDS:-86400}
+      IIDS_REPORT_DIR: /app/data/reports
+      IIDS_UPLOAD_DIR: /app/data/uploads
+      IIDS_WORKER_ENABLED: ${IIDS_WORKER_ENABLED:-true}
+    ports:
+      - "8080:8080"
+    volumes:
+      - backend-data:/app/data
+
+  frontend:
+    build:
+      context: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
+
+volumes:
+  postgres-data:
+  redis-data:
+  backend-data:
