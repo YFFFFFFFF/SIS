@@ -1,0 +1,461 @@
+# 用户使用手册
+
+本文档面向本地 M1 版本使用者，说明如何启动系统，以及如何完成一个项目从建档、录入方案、执行测算、生成报告到审批和审计查询的完整流程。
+
+## 1. 启动系统
+
+### 1.1 本地开发模式启动
+
+前置条件：
+
+- Java 17 或更高版本
+- Maven 3.9 或更高版本
+- Node.js 22 或更高版本
+- npm 10 或更高版本
+
+启动后端：
+
+```powershell
+cd E:\SIS\backend
+mvn spring-boot:run
+```
+
+启动前端：
+
+```powershell
+cd E:\SIS\frontend
+npm install
+npm run dev
+```
+
+打开浏览器访问：
+
+```text
+http://localhost:5173
+```
+
+前端开发服务会把 `/api` 请求代理到 `http://localhost:8080`。
+
+### 1.2 Docker Compose 启动
+
+如果本机已安装 Docker，可以使用 Compose 启动完整栈：
+
+```powershell
+cd E:\SIS
+Copy-Item .env.example .env
+```
+
+编辑 `.env`，至少替换以下配置：
+
+- `POSTGRES_PASSWORD`
+- `IIDS_SECURITY_JWT_SECRET`
+
+启动：
+
+```powershell
+docker compose up --build
+```
+
+访问地址：
+
+- 前端：`http://localhost:5173`
+- 后端 API：`http://localhost:8080/api/v1`
+- PostgreSQL：`localhost:5432`
+- Redis：`localhost:6379`
+
+当前仓库已提供 Compose 文件，但本机验证时 `docker` 命令不可用，因此 Compose 配置尚未在当前机器完成实跑验证。
+
+## 2. 登录
+
+系统初始化后有两个本地种子账号：
+
+| 用户名 | 密码 | 角色 |
+| --- | --- | --- |
+| `analyst` | `Password123!` | 投资分析员 |
+| `admin` | `Password123!` | 系统管理员 |
+
+操作步骤：
+
+1. 打开 `http://localhost:5173`。
+2. 系统会跳转到登录页。
+3. 输入用户名和密码。
+4. 点击登录按钮。
+5. 登录成功后进入工作台首页。
+
+说明：
+
+- 登录成功后，前端会把 JWT token 保存到浏览器本地存储。
+- 后续 API 请求会自动携带 `Authorization: Bearer <token>`。
+- 如果 token 失效或请求未授权，需要重新登录。
+
+## 3. 工作台结构
+
+M1 前端是一个单页工作台，主要包含以下页签：
+
+| 页签 | 用途 |
+| --- | --- |
+| Projects | 创建和维护项目 |
+| Scenarios | 创建和维护项目下的测算方案 |
+| Inputs | 录入测算参数、投资项、融资方案 |
+| Calculation | 发起测算、查看指标和现金流、生成并下载报告 |
+| Governance | 提交审批、审批流转、编辑锁 |
+| Audit | 查询审计事件 |
+
+推荐操作顺序：
+
+1. 创建项目。
+2. 选择项目。
+3. 创建测算方案。
+4. 选择测算方案。
+5. 录入参数、投资项和融资方案。
+6. 发起测算。
+7. 查看测算结果。
+8. 生成并下载报告。
+9. 提交审批。
+10. 查询审计记录。
+
+## 4. 项目管理
+
+### 4.1 创建项目
+
+进入 `Projects` 页签。
+
+填写字段：
+
+- `Code`：项目编码，创建后不可在前端编辑。
+- `Name`：项目名称。
+- `Type`：项目类型，例如 `INDUSTRIAL`。
+- `Status`：项目状态，可选 `DRAFT`、`ACTIVE`、`ARCHIVED`。
+- `Department`：所属部门。
+- `Tags`：标签，建议用逗号分隔。
+- `Description`：项目描述。
+
+操作步骤：
+
+1. 确认左侧表格没有选中已有项目；如已选中，点击 `Reset`。
+2. 填写项目表单。
+3. 点击 `Save Project`。
+4. 看到 `Project saved` 提示后，左侧项目列表会刷新。
+
+### 4.2 编辑项目
+
+操作步骤：
+
+1. 在左侧 `Project List` 表格中点击一个项目。
+2. 右侧表单会切换为 `Edit Project`。
+3. 修改名称、状态、部门、标签或描述。
+4. 点击 `Save Project`。
+5. 保存后列表刷新。
+
+注意：
+
+- 前端创建后不允许修改 `Code`。
+- M1 未提供删除项目入口。
+
+## 5. 测算方案管理
+
+### 5.1 创建方案
+
+进入 `Scenarios` 页签。
+
+前置条件：
+
+- 必须先在 `Projects` 页签选择一个项目。
+
+填写字段：
+
+- `Name`：方案名称，例如 `Base Case`。
+- `Status`：方案状态，创建时一般保持 `DRAFT`。
+- `Horizon Years`：测算期年数。
+- `Construction Years`：建设期年数。
+- `Remarks`：备注。
+
+操作步骤：
+
+1. 在 `Projects` 页签选择项目。
+2. 切换到 `Scenarios` 页签。
+3. 如右侧正在编辑已有方案，点击 `Reset`。
+4. 填写方案表单。
+5. 点击 `Save Scenario`。
+6. 创建成功后，左侧方案列表刷新。
+
+### 5.2 编辑方案
+
+操作步骤：
+
+1. 在 `Scenarios` 页签左侧表格点击一个方案。
+2. 右侧表单会显示方案详情。
+3. 修改状态、测算期、建设期或备注。
+4. 点击 `Save Scenario`。
+
+注意：
+
+- M1 未提供删除方案入口。
+- 审批通过后的业务只做基础状态表达，尚未实现完整的前端强约束。
+
+## 6. 测算输入
+
+进入 `Inputs` 页签。
+
+前置条件：
+
+- 必须先选择一个项目。
+- 必须先选择该项目下的一个方案。
+
+### 6.1 保存参数
+
+参数字段：
+
+- `WACC`：折现率。
+- `Tax Rate`：所得税率。
+- `Depreciation Years`：折旧年限。
+- `Residual Rate`：残值率。
+- `Loan Ratio Limit`：贷款比例上限。
+- `Price Per Unit`：单位售价。
+- `Unit Cost`：单位成本。
+- `Annual Output`：年产量。
+- `Fixed Cost`：固定经营成本。
+- `Formula Version`：公式版本，默认 `fin-m1-1.0.0`。
+
+操作步骤：
+
+1. 在 `Inputs` 页签的 `Parameters` 面板填写参数。
+2. 点击 `Save Parameters`。
+3. 看到 `Parameters saved` 提示后，参数已保存。
+
+说明：
+
+- `WACC`、税率、残值率、贷款比例等按小数录入，例如 10% 录入 `0.1`。
+- 金额类字段使用数字，不带货币符号。
+
+### 6.2 添加投资项
+
+字段：
+
+- `Category`：投资分类，例如 `CONSTRUCTION`。
+- `Name`：投资项名称。
+- `Amount`：投资金额。
+- `Year No`：发生年份序号，建设期初始可填 `0`。
+
+操作步骤：
+
+1. 在 `Investment Item` 面板填写投资项。
+2. 点击 `Add Investment`。
+3. 看到 `Investment item added` 提示后，投资项已保存。
+
+注意：
+
+- M1 支持多次新增投资项。
+- M1 前端暂不提供投资项列表和删除入口。
+
+### 6.3 添加融资方案
+
+字段：
+
+- `Source Type`：资金来源类型，例如 `EQUITY`。
+- `Ratio`：融资比例。
+- `Amount`：融资金额。
+- `Interest Rate`：利率。
+- `Term Years`：期限年数。
+
+操作步骤：
+
+1. 在 `Financing Plan` 面板填写融资方案。
+2. 点击 `Add Financing`。
+3. 看到 `Financing plan added` 提示后，融资方案已保存。
+
+## 7. 执行测算
+
+进入 `Calculation` 页签。
+
+前置条件：
+
+- 已选择方案。
+- 已保存参数。
+- 已至少添加必要投资项和融资方案。
+
+操作步骤：
+
+1. 检查 `Request key`，可以使用默认值，也可以改成自己的请求标识。
+2. 点击 `Calculate`。
+3. 系统会创建异步测算任务。
+4. 页面会自动轮询任务状态。
+5. 任务成功后，`Metrics` 和 `Cash Flow` 面板显示结果。
+
+任务状态：
+
+- `PENDING`：等待处理。
+- `RUNNING`：执行中。
+- `SUCCESS`：执行成功。
+- `FAILED`：执行失败。
+
+如果任务长时间未刷新：
+
+1. 点击 `Refresh Results`。
+2. 如果仍无结果，查看任务状态和错误信息。
+3. 后端开发模式下确认 `iids.worker.enabled=true`。
+
+## 8. 查看测算结果
+
+测算成功后查看两个区域：
+
+### 8.1 Metrics
+
+指标区展示测算指标表和图表。
+
+常见指标以 `metrics` 字典形式返回，例如收益、净现值、现金流相关指标。具体指标由后端 `FinancialEngine` 输出决定。
+
+### 8.2 Cash Flow
+
+现金流表包含：
+
+- `Period`：期间。
+- `Inflow`：现金流入。
+- `Outflow`：现金流出。
+- `Net CF`：净现金流。
+- `Discounted CF`：折现现金流。
+- `Cumulative CF`：累计现金流。
+
+## 9. 生成和下载报告
+
+前置条件：
+
+- 当前页面存在成功的测算任务。
+
+操作步骤：
+
+1. 在 `Calculation` 页签点击 `Generate Report`。
+2. 看到 `Report generated` 提示后，报告记录已生成。
+3. 点击 `Download Report`。
+4. 浏览器会下载 Excel 文件。
+
+注意：
+
+- 报告文件由后端生成，默认保存到 `./data/reports`。
+- Docker 模式下报告保存到容器内 `/app/data/reports`，并通过 `backend-data` volume 持久化。
+
+## 10. 审批和编辑锁
+
+进入 `Governance` 页签。
+
+### 10.1 提交审批
+
+前置条件：
+
+- 已选择方案。
+
+操作步骤：
+
+1. 点击 `Submit Scenario`。
+2. 系统返回审批实例。
+3. 页面显示 `Instance`、`Node`、`Status` 和 `Scenario`。
+4. `Instance id` 会自动填入。
+
+### 10.2 审批通过
+
+固定审批链包括复核和最终审批。
+
+操作步骤：
+
+1. 确认 `Instance id` 已填写。
+2. 点击 `Review Approve`。
+3. 审批节点进入下一步后，点击 `Final Approve`。
+4. 页面显示最新审批状态。
+
+### 10.3 审批驳回
+
+操作步骤：
+
+1. 输入或确认 `Instance id`。
+2. 点击 `Reject`。
+3. 页面显示驳回后的审批状态。
+
+### 10.4 获取编辑锁
+
+字段：
+
+- `Holder Id`：持有人 ID。
+- `Holder Name`：持有人名称。
+- `TTL Minutes`：锁有效分钟数。
+
+操作步骤：
+
+1. 选择方案。
+2. 填写持有人信息。
+3. 点击 `Acquire Lock`。
+4. 页面显示持有人和过期时间。
+
+### 10.5 释放编辑锁
+
+操作步骤：
+
+1. 确认当前选择的方案和 `Holder Id`。
+2. 点击 `Release Lock`。
+3. 看到 `Lock released` 提示后，锁已释放。
+
+注意：
+
+- 释放锁时 `holderId` 必须匹配。
+- M1 实现的是基础锁能力，前端未对所有编辑按钮做锁状态联动禁用。
+
+## 11. 审计查询
+
+进入 `Audit` 页签。
+
+字段：
+
+- `Target type`：目标类型，例如 `SCENARIO`。
+- `Target id`：目标 ID，例如方案 ID。
+
+操作步骤：
+
+1. 选择方案后，系统会自动把 `Target id` 设置为方案 ID。
+2. 确认 `Target type`，默认 `SCENARIO`。
+3. 点击 `Query`。
+4. 查看审计表格中的时间、动作、目标、目标 ID 和变更后内容。
+
+## 12. 常见问题
+
+### 登录失败
+
+检查：
+
+1. 后端是否已启动在 `8080`。
+2. 用户名密码是否为种子账号。
+3. 浏览器请求是否能访问 `/api/v1/auth/login`。
+
+### 前端请求 401
+
+处理：
+
+1. 重新登录。
+2. 清理浏览器本地存储中的旧 token。
+3. 确认后端 `IIDS_SECURITY_JWT_SECRET` 没有在运行中变化。
+
+### 测算无结果
+
+检查：
+
+1. 是否选择了方案。
+2. 是否保存了参数。
+3. 是否添加了投资项和融资方案。
+4. 任务状态是否为 `FAILED`。
+5. 后端 worker 是否启用。
+
+### 报告无法下载
+
+检查：
+
+1. 是否先点击了 `Generate Report`。
+2. 当前报告是否生成成功。
+3. 后端报告目录是否可写。
+4. Docker 模式下 volume 是否正常挂载。
+
+### Docker 命令不可用
+
+如果 PowerShell 提示 `docker` 不是可识别命令：
+
+1. 安装 Docker Desktop。
+2. 确认 Docker Desktop 已启动。
+3. 重新打开 PowerShell。
+4. 运行 `docker --version` 检查 PATH。

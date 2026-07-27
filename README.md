@@ -2,6 +2,14 @@
 
 Personal M1 implementation of the Intelligent Investment Decision Support System. The project contains a Spring Boot backend and a Vue 3 workbench frontend.
 
+## Documentation
+
+- [User Manual](docs/user_manual.md): detailed local startup and business operation steps.
+- [API Overview](docs/api_overview.md): M1 API endpoints, request bodies and response rules.
+- [Test Plan](docs/test_plan.md): automated verification commands and manual acceptance checklist.
+- [Developer Notes](docs/dev_notes.md): code structure, conventions, configuration and known limits.
+- [Handoff](docs/handoff.md): delivery status, verification record, risks and next steps.
+
 ## Local Development
 
 Prerequisites:
@@ -100,3 +108,5 @@ Compose configuration:
 cd E:\SIS
 docker compose config
 ```
+
+Current verification note: backend tests/package and frontend build passed on 2026-07-27. `docker compose config` could not be completed on the current machine because the `docker` command is not available in PowerShell.
