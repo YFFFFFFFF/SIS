@@ -16,6 +16,7 @@
 - PostgreSQL Docker/部署数据库
 - Apache POI
 - JJWT
+- Springdoc OpenAPI
 
 前端：
 
@@ -224,6 +225,17 @@ http://backend:8080/api/
 4. 在 `CalculationService` 中持久化新增指标。
 5. 在前端 `MetricChart` 或指标表中展示。
 
+### 5.6 OpenAPI
+
+OpenAPI is provided by `springdoc-openapi-starter-webmvc-ui`.
+
+Runtime endpoints:
+
+- `/v3/api-docs`
+- `/swagger-ui/index.html`
+
+The contract metadata and JWT Bearer security scheme are configured in `com.sis.iids.docs.OpenApiConfig`. Keep `OpenApiContractTest` updated when adding or renaming core M1 API paths.
+
 ## 6. 前端开发约定
 
 ### 6.1 API 调用
@@ -313,7 +325,6 @@ docker compose up --build
 - 前端未提供项目、方案、投资项、融资方案删除入口。
 - 前端未提供完整 Excel 模板下载和导入结果明细展示。
 - 前端未对审批状态和编辑锁做全局编辑禁用。
-- 暂无 OpenAPI/Swagger 文档生成。
 - 暂无生产级日志、监控、备份和恢复方案。
 - `npm install` 当前报告 5 个安全审计项，未执行 `npm audit fix --force`，因为可能引入破坏性依赖升级。
 
@@ -321,7 +332,7 @@ docker compose up --build
 
 优先级建议：
 
-1. 增加 OpenAPI 文档和接口契约测试。
+1. 保持 OpenAPI 契约测试随核心接口同步更新。
 2. 前端拆分工作台页面并补 E2E 测试。
 3. 完善 Excel 模板下载、导入预览、错误行展示。
 4. 增强审批状态和编辑锁对编辑操作的约束。

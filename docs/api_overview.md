@@ -2,6 +2,15 @@
 
 This document summarizes the M1 HTTP API implemented by the backend. The backend base path is `/api/v1`.
 
+## OpenAPI And Swagger UI
+
+When the backend is running, the generated OpenAPI contract is available at:
+
+- JSON contract: `http://localhost:8080/v3/api-docs`
+- Swagger UI: `http://localhost:8080/swagger-ui/index.html`
+
+The generated contract includes the M1 API metadata and a `bearerAuth` HTTP security scheme for JWT authentication. Use the Swagger UI `Authorize` button with the token returned by `POST /api/v1/auth/login`.
+
 ## Common Rules
 
 - Authentication: `POST /api/v1/auth/login` is public. Other `/api/v1/**` endpoints require `Authorization: Bearer <token>`.

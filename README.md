@@ -6,6 +6,7 @@ Personal M1 implementation of the Intelligent Investment Decision Support System
 
 - [User Manual](docs/user_manual.md): detailed local startup and business operation steps.
 - [API Overview](docs/api_overview.md): M1 API endpoints, request bodies and response rules.
+- Swagger UI: run the backend and open `http://localhost:8080/swagger-ui/index.html`.
 - [Test Plan](docs/test_plan.md): automated verification commands and manual acceptance checklist.
 - [Developer Notes](docs/dev_notes.md): code structure, conventions, configuration and known limits.
 - [Handoff](docs/handoff.md): delivery status, verification record, risks and next steps.
