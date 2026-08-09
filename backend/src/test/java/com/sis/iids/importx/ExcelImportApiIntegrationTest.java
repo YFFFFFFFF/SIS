@@ -1,5 +1,6 @@
 package com.sis.iids.importx;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sis.iids.calculation.FinancingPlanRepository;
 import com.sis.iids.calculation.InvestmentItemRepository;
 import com.sis.iids.scenario.ParameterSetRepository;
@@ -12,6 +13,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,8 +30,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc(addFilters = false)
+@WithMockUser(roles = {"ADMIN", "INVESTMENT_ANALYST", "FINANCE_SPECIALIST", "TECHNICAL_ENGINEER", "PROJECT_MANAGER", "SYSTEM_ADMINISTRATOR"})
 @Transactional
 class ExcelImportApiIntegrationTest {
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @Autowired
     private MockMvc mockMvc;
@@ -58,6 +63,7 @@ class ExcelImportApiIntegrationTest {
                 .andExpect(jsonPath("$.data.scenarioId").value(scenarioId))
                 .andExpect(jsonPath("$.data.fileName").value("m1-template.xlsx"))
                 .andExpect(jsonPath("$.data.status").value("SUCCESS"))
+                .andExpect(jsonPath("$.data.message").value("Excel 模板导入成功"))
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
@@ -83,7 +89,7 @@ class ExcelImportApiIntegrationTest {
                         .file(file))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("FAILED"))
-                .andExpect(jsonPath("$.data.message", containsString("InvestmentItems row 2 amount")))
+                .andExpect(jsonPath("$.data.message", containsString("InvestmentItems 第 2 行字段 amount 必须是数字")))
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
@@ -179,7 +185,7 @@ class ExcelImportApiIntegrationTest {
         return extractId(response);
     }
 
-    private Long extractId(String response) {
-        return Long.valueOf(response.replaceAll(".*\\\"id\\\":(\\d+).*", "$1"));
+    private Long extractId(String response) throws Exception {
+        return OBJECT_MAPPER.readTree(response).path("data").path("id").asLong();
     }
 }

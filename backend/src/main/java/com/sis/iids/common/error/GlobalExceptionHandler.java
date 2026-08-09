@@ -20,9 +20,11 @@ public class GlobalExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(BusinessException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ApiResponse<Void> handleBusiness(BusinessException ex) {
-        return ApiResponse.fail(ex.getErrorCode().getCode(), ex.getMessage());
+    public org.springframework.http.ResponseEntity<ApiResponse<Void>> handleBusiness(BusinessException ex) {
+        // 仅 CONFLICT 升级为 409（R4 语义），其余维持 400 以保持既有契约与测试基线不变
+        HttpStatus status = ex.getErrorCode() == ErrorCode.CONFLICT ? HttpStatus.CONFLICT : HttpStatus.BAD_REQUEST;
+        return org.springframework.http.ResponseEntity.status(status)
+                .body(ApiResponse.fail(ex.getErrorCode().getCode(), ex.getMessage()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -31,14 +33,28 @@ public class GlobalExceptionHandler {
         FieldError fieldError = ex.getBindingResult().getFieldError();
         String message = fieldError == null
                 ? ErrorCode.BAD_REQUEST.getDefaultMessage()
-                : fieldError.getField() + ": " + fieldError.getDefaultMessage();
+                : "字段 %s 校验失败：%s".formatted(fieldError.getField(), fieldError.getDefaultMessage());
         return ApiResponse.fail(ErrorCode.BAD_REQUEST.getCode(), message);
+    }
+
+    /** 缺少必填请求参数 → 400（原被兜底捕获返回 500，语义错误）。 */
+    @ExceptionHandler(org.springframework.web.bind.MissingServletRequestParameterException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiResponse<Void> handleMissingParam(org.springframework.web.bind.MissingServletRequestParameterException ex) {
+        return ApiResponse.fail(ErrorCode.BAD_REQUEST.getCode(), "缺少必填请求参数：" + ex.getParameterName());
+    }
+
+    /** 参数类型不匹配 → 400。 */
+    @ExceptionHandler(org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiResponse<Void> handleTypeMismatch(org.springframework.web.method.annotation.MethodArgumentTypeMismatchException ex) {
+        return ApiResponse.fail(ErrorCode.BAD_REQUEST.getCode(), "请求参数类型错误：" + ex.getName());
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiResponse<Void> handleConstraint(ConstraintViolationException ex) {
-        return ApiResponse.fail(ErrorCode.BAD_REQUEST.getCode(), ex.getMessage());
+        return ApiResponse.fail(ErrorCode.BAD_REQUEST.getCode(), "请求参数校验失败：" + ex.getMessage());
     }
 
     @ExceptionHandler(BadCredentialsException.class)
@@ -58,6 +74,7 @@ public class GlobalExceptionHandler {
     public ApiResponse<Void> handleNoResource(NoResourceFoundException ex) {
         return ApiResponse.fail(ErrorCode.NOT_FOUND.getCode(), ErrorCode.NOT_FOUND.getDefaultMessage());
     }
+
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ApiResponse<Void> handleOther(Exception ex) {

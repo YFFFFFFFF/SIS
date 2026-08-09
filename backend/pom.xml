@@ -76,6 +76,18 @@
             <artifactId>poi-ooxml</artifactId>
             <version>5.3.0</version>
         </dependency>
+        <!-- R-06 报告 PDF 导出（D3 选型 A：OpenPDF，LGPL，避免 AGPL 的 iText） -->
+        <dependency>
+            <groupId>com.github.librepdf</groupId>
+            <artifactId>openpdf</artifactId>
+            <version>2.0.3</version>
+        </dependency>
+        <!-- R-13 组合优化（D1 选型 A：oj! Algorithms，纯 Java Apache-2.0，支持 MIP，私有化部署友好） -->
+        <dependency>
+            <groupId>org.ojalgo</groupId>
+            <artifactId>ojalgo</artifactId>
+            <version>53.0.0</version>
+        </dependency>
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>

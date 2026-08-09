@@ -1,21 +1,18 @@
 <template>
   <main class="login-page">
     <section class="login-panel">
-      <div class="login-copy">
-        <div class="brand-mark large">ID</div>
-        <h1>IIDS Workbench</h1>
-        <p>Use your analyst account to access project modeling, calculation tasks and approval workflows.</p>
-      </div>
+      <img class="login-logo" src="../img/logo.png" alt="京东方" />
+      <h1 class="login-system-name">京东方投资测算系统</h1>
       <el-form class="login-form" label-position="top" @submit.prevent="submit">
-        <el-form-item label="Username">
-          <el-input v-model="form.username" autocomplete="username" size="large" />
+        <el-form-item label="用户名">
+          <el-input v-model="form.username" autocomplete="username" size="large" placeholder="请输入用户名" />
         </el-form-item>
-        <el-form-item label="Password">
-          <el-input v-model="form.password" autocomplete="current-password" size="large" show-password type="password" />
+        <el-form-item label="密码">
+          <el-input v-model="form.password" autocomplete="current-password" size="large" show-password type="password" placeholder="请输入密码" />
         </el-form-item>
         <el-alert v-if="error" :closable="false" :title="error" type="error" />
         <el-button :loading="loading" class="login-button" native-type="submit" size="large" type="primary">
-          Sign in
+          登录
         </el-button>
       </el-form>
     </section>
@@ -23,7 +20,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
@@ -32,7 +29,9 @@ const route = useRoute()
 const router = useRouter()
 const loading = ref(false)
 const error = ref('')
-const form = reactive({ username: 'analyst', password: 'Password123!' })
+const form = reactive({ username: 'investment_analyst', password: 'Password123!' })
+
+onMounted(() => { document.title = '京东方投资测算系统 - 登录' })
 
 async function submit() {
   loading.value = true
@@ -42,7 +41,7 @@ async function submit() {
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
     router.push(redirect)
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Login failed'
+    error.value = err instanceof Error ? err.message : '登录失败，请检查用户名和密码'
   } finally {
     loading.value = false
   }

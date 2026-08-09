@@ -55,6 +55,24 @@ public class ParameterSet {
     @Column(name = "formula_version", length = 64)
     private String formulaVersion;
 
+    @Column(name = "depreciation_policy", nullable = false, length = 32)
+    private String depreciationPolicy = "STRAIGHT_LINE";
+
+    @Column(name = "amortization_years", nullable = false)
+    private Integer amortizationYears = 0;
+
+    @Column(name = "amortizable_amount", nullable = false, precision = 18, scale = 4)
+    private BigDecimal amortizableAmount = BigDecimal.ZERO;
+
+    @Column(name = "repayment_method", nullable = false, length = 32)
+    private String repaymentMethod = "EQUAL_PRINCIPAL";
+
+    @Column(name = "tax_schedule")
+    private String taxSchedule;
+
+    @Column(name = "ramp_up")
+    private String rampUp;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -165,6 +183,54 @@ public class ParameterSet {
 
     public void setFormulaVersion(String formulaVersion) {
         this.formulaVersion = formulaVersion;
+    }
+
+    public String getDepreciationPolicy() {
+        return depreciationPolicy;
+    }
+
+    public void setDepreciationPolicy(String depreciationPolicy) {
+        this.depreciationPolicy = depreciationPolicy;
+    }
+
+    public Integer getAmortizationYears() {
+        return amortizationYears;
+    }
+
+    public void setAmortizationYears(Integer amortizationYears) {
+        this.amortizationYears = amortizationYears;
+    }
+
+    public BigDecimal getAmortizableAmount() {
+        return amortizableAmount;
+    }
+
+    public void setAmortizableAmount(BigDecimal amortizableAmount) {
+        this.amortizableAmount = amortizableAmount;
+    }
+
+    public String getRepaymentMethod() {
+        return repaymentMethod;
+    }
+
+    public void setRepaymentMethod(String repaymentMethod) {
+        this.repaymentMethod = repaymentMethod;
+    }
+
+    public String getTaxSchedule() {
+        return taxSchedule;
+    }
+
+    public void setTaxSchedule(String taxSchedule) {
+        this.taxSchedule = taxSchedule;
+    }
+
+    public String getRampUp() {
+        return rampUp;
+    }
+
+    public void setRampUp(String rampUp) {
+        this.rampUp = rampUp;
     }
 
     public LocalDateTime getCreatedAt() {

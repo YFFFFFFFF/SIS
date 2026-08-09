@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>智能投资测算与决策支持系统 · 原型</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<style>
+:root{
+  --primary:#2563eb; --primary-dark:#1d4ed8; --primary-light:#dbeafe;
+  --bg:#f3f5f9; --card:#ffffff; --text:#1e293b; --text-2:#64748b; --text-3:#94a3b8;
+  --border:#e2e8f0; --success:#16a34a; --warning:#d97706; --danger:#dc2626;
+  --sidebar-w:224px; --topbar-h:56px; --radius:10px;
+  --shadow:0 1px 3px rgba(15,23,42,.06),0 1px 2px rgba(15,23,42,.04);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{font-family:"Microsoft YaHei","PingFang SC","Segoe UI",sans-serif;background:var(--bg);color:var(--text);font-size:13px;overflow:hidden}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:4px}
+::-webkit-scrollbar-track{background:transparent}
+
+/* ---------- 布局 ---------- */
+.layout{display:flex;height:100vh}
+.sidebar{width:var(--sidebar-w);background:#0f1e3d;color:#cbd5e1;display:flex;flex-direction:column;flex-shrink:0}
+.sidebar .logo{height:var(--topbar-h);display:flex;align-items:center;gap:10px;padding:0 16px;border-bottom:1px solid rgba(255,255,255,.08)}
+.logo-icon{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#3b82f6,#06b6d4);display:flex;align-items:center;justify-content:center;font-size:16px;color:#fff;font-weight:700}
+.logo-text{font-size:14px;font-weight:600;color:#fff;line-height:1.3}
+.logo-text small{display:block;font-size:10px;color:#7d90b5;font-weight:400}
+.nav{flex:1;overflow-y:auto;padding:10px 0}
+.nav-group{padding:10px 16px 4px;font-size:11px;color:#64748b;letter-spacing:1px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;font-size:13px;color:#b6c2d9;border-left:3px solid transparent;transition:.15s}
+.nav-item:hover{background:rgba(255,255,255,.06);color:#fff}
+.nav-item.active{background:rgba(59,130,246,.18);color:#fff;border-left-color:#3b82f6}
+.nav-item .ico{width:18px;text-align:center;font-size:14px}
+.nav-item .badge{margin-left:auto;background:#ef4444;color:#fff;font-size:10px;border-radius:8px;padding:1px 6px}
+.sidebar .user-card{padding:12px 16px;border-top:1px solid rgba(255,255,255,.08);display:flex;gap:10px;align-items:center}
+.avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#ef4444);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:600;font-size:13px}
+.user-card .uname{color:#fff;font-size:13px}
+.user-card .urole{font-size:11px;color:#7d90b5}
+
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.topbar{height:var(--topbar-h);background:var(--card);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:16px;flex-shrink:0}
+.topbar h1{font-size:16px;font-weight:600}
+.crumb{color:var(--text-3);font-size:12px}
+.topbar .sp{flex:1}
+.search{display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;width:220px;color:var(--text-3)}
+.search input{border:none;background:transparent;outline:none;font-size:12px;width:100%}
+.icon-btn{width:34px;height:34px;border-radius:8px;border:1px solid var(--border);background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;font-size:15px;color:var(--text-2)}
+.icon-btn:hover{background:var(--bg)}
+.icon-btn .dot{position:absolute;top:6px;right:7px;width:7px;height:7px;border-radius:50%;background:#ef4444;border:1.5px solid #fff}
+.content{flex:1;overflow-y:auto;padding:18px 20px}
+
+/* ---------- 通用组件 ---------- */
+.page{display:none;animation:fadeIn .25s}
+.page.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.grid{display:grid;gap:14px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+.card-h{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.card-h h3{font-size:14px;font-weight:600}
+.card-h .sub{font-size:11px;color:var(--text-3)}
+.card-h .sp{flex:1}
+.card-b{padding:16px}
+.card-b.flush{padding:0}
+
+.kpi{padding:16px;position:relative;overflow:hidden}
+.kpi .lbl{font-size:12px;color:var(--text-2);display:flex;align-items:center;gap:6px}
+.kpi .val{font-size:24px;font-weight:700;margin-top:6px;font-family:"Segoe UI",sans-serif}
+.kpi .val small{font-size:12px;font-weight:400;color:var(--text-3);margin-left:2px}
+.kpi .trd{font-size:11px;margin-top:6px}
+.kpi .trd.up{color:var(--success)} .kpi .trd.down{color:var(--danger)}
+.kpi::after{content:"";position:absolute;right:-14px;top:-14px;width:64px;height:64px;border-radius:50%;opacity:.08;background:var(--primary)}
+.kpi.green::after{background:var(--success)} .kpi.orange::after{background:var(--warning)} .kpi.red::after{background:var(--danger)}
+
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:7px;border:1px solid var(--border);background:#fff;color:var(--text);font-size:12px;cursor:pointer;transition:.15s;white-space:nowrap}
+.btn:hover{border-color:var(--primary);color:var(--primary)}
+.btn.primary{background:var(--primary);border-color:var(--primary);color:#fff}
+.btn.primary:hover{background:var(--primary-dark)}
+.btn.danger{color:var(--danger)} .btn.danger:hover{border-color:var(--danger)}
+.btn.sm{padding:4px 10px;font-size:11px}
+.btn.ghost{border-color:transparent;color:var(--primary)}
+.btn.ghost:hover{background:var(--primary-light)}
+
+.tag{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:500}
+.tag.blue{background:#dbeafe;color:#1d4ed8} .tag.green{background:#dcfce7;color:#15803d}
+.tag.orange{background:#fef3c7;color:#b45309} .tag.red{background:#fee2e2;color:#b91c1c}
+.tag.gray{background:#f1f5f9;color:#64748b} .tag.purple{background:#ede9fe;color:#6d28d9}
+.tag.cyan{background:#cffafe;color:#0e7490}
+.dotlight{width:8px;height:8px;border-radius:50%;display:inline-block}
+.dotlight.g{background:#22c55e;box-shadow:0 0 6px #22c55e88}
+.dotlight.y{background:#f59e0b;box-shadow:0 0 6px #f59e0b88}
+.dotlight.r{background:#ef4444;box-shadow:0 0 6px #ef444488}
+
+table.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{background:#f8fafc;color:var(--text-2);font-weight:500;text-align:left;padding:9px 12px;border-bottom:1px solid var(--border);white-space:nowrap}
+.tbl td{padding:9px 12px;border-bottom:1px solid #f1f5f9;white-space:nowrap}
+.tbl tr:hover td{background:#f8fafc}
+.tbl td.num,.tbl th.num{text-align:right;font-variant-numeric:tabular-nums}
+.tbl tr.total td{background:#f0f7ff;font-weight:600;border-top:2px solid var(--border)}
+
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);padding:0 16px;background:#fff;border-radius:var(--radius) var(--radius) 0 0}
+.tabs .tab{padding:11px 16px;font-size:13px;color:var(--text-2);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs .tab:hover{color:var(--primary)}
+.tabs .tab.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:600}
+
+.form-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px 16px}
+.fld label{display:block;font-size:12px;color:var(--text-2);margin-bottom:5px}
+.fld label .req{color:var(--danger)}
+.fld input,.fld select{width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-size:12px;outline:none;background:#fff;transition:.15s}
+.fld input:focus,.fld select:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+.fld .hint{font-size:11px;color:var(--text-3);margin-top:4px}
+.fld .ai-tip{display:inline-flex;align-items:center;gap:3px;font-size:10px;color:#6d28d9;background:#ede9fe;border-radius:8px;padding:1px 6px;margin-left:6px;cursor:pointer}
+
+.chart{width:100%;height:300px}
+.chart.tall{height:360px}
+.chart.short{height:230px}
+
+.progress{height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden;min-width:80px}
+.progress>i{display:block;height:100%;border-radius:3px;background:var(--primary)}
+.progress>i.g{background:var(--success)} .progress>i.o{background:var(--warning)} .progress>i.r{background:var(--danger)}
+
+.toolbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.toolbar .sp{flex:1}
+.filter-seg{display:inline-flex;background:#fff;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.filter-seg button{border:none;background:transparent;padding:7px 14px;font-size:12px;cursor:pointer;color:var(--text-2)}
+.filter-seg button.on{background:var(--primary);color:#fff}
+
+/* ---------- 瀑布/流程 ---------- */
+.flow-steps{display:flex;align-items:center;gap:0;padding:14px 16px;overflow-x:auto}
+.fstep{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.fstep .n{width:26px;height:26px;border-radius:50%;background:#e2e8f0;color:var(--text-2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600}
+.fstep.done .n{background:#dcfce7;color:#15803d}
+.fstep.cur .n{background:var(--primary);color:#fff;box-shadow:0 0 0 4px rgba(37,99,235,.18)}
+.fstep .t{font-size:12px} .fstep.cur .t{font-weight:600;color:var(--primary)}
+.fstep .line{width:44px;height:2px;background:#e2e8f0;margin:0 10px}
+.fstep.done .line{background:#86efac}
+
+/* ---------- 审批时间线 ---------- */
+.timeline{position:relative;padding-left:22px}
+.timeline::before{content:"";position:absolute;left:7px;top:6px;bottom:6px;width:2px;background:#e2e8f0}
+.tl-item{position:relative;padding:0 0 18px 8px}
+.tl-item::before{content:"";position:absolute;left:-19px;top:4px;width:10px;height:10px;border-radius:50%;background:#cbd5e1;border:2px solid #fff}
+.tl-item.ok::before{background:#22c55e} .tl-item.cur::before{background:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.2)} .tl-item.wait::before{background:#e2e8f0}
+.tl-item .tt{font-size:13px;font-weight:600}
+.tl-item .td{font-size:11px;color:var(--text-3);margin-top:2px}
+
+/* ---------- 消息抽屉 & 弹窗 ---------- */
+.drawer-mask{position:fixed;inset:0;background:rgba(15,23,42,.35);opacity:0;pointer-events:none;transition:.2s;z-index:90}
+.drawer-mask.show{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:-380px;width:380px;height:100%;background:#fff;z-index:99;transition:right .25s;display:flex;flex-direction:column;box-shadow:-4px 0 20px rgba(0,0,0,.1)}
+.drawer.show{right:0}
+.drawer .d-h{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;font-weight:600;font-size:14px}
+.drawer .d-b{flex:1;overflow-y:auto;padding:12px 16px}
+.notif{display:flex;gap:10px;padding:10px;border-radius:8px;margin-bottom:8px;border:1px solid var(--border)}
+.notif:hover{background:#f8fafc}
+.notif .ni{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.notif .nt{font-size:12px;font-weight:600}
+.notif .nd{font-size:11px;color:var(--text-2);margin-top:2px;line-height:1.5}
+.notif .tm{font-size:10px;color:var(--text-3);margin-top:4px}
+
+.modal-mask{position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;align-items:center;justify-content:center;z-index:100}
+.modal-mask.show{display:flex}
+.modal{background:#fff;border-radius:12px;width:520px;max-width:92vw;max-height:86vh;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(0,0,0,.2)}
+.modal .m-h{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;font-size:14px;font-weight:600}
+.modal .m-b{padding:18px;overflow-y:auto}
+.modal .m-f{padding:12px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px}
+.x{margin-left:auto;cursor:pointer;color:var(--text-3);font-size:18px;line-height:1;border:none;background:none}
+.x:hover{color:var(--text)}
+
+.toast{position:fixed;top:70px;left:50%;transform:translateX(-50%) translateY(-20px);background:#0f172a;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;opacity:0;transition:.25s;z-index:200;pointer-events:none;display:flex;align-items:center;gap:8px}
+.toast.show{opacity:1;transform:translateX(-50%)}
+
+.ai-panel{background:linear-gradient(135deg,#f5f3ff,#eff6ff);border:1px solid #ddd6fe;border-radius:var(--radius);padding:14px 16px}
+.ai-panel .ai-h{display:flex;align-items:center;gap:8px;font-weight:600;font-size:13px;color:#5b21b6;margin-bottom:10px}
+.ai-badge{background:linear-gradient(135deg,#8b5cf6,#6366f1);color:#fff;font-size:10px;padding:2px 8px;border-radius:10px}
+
+.matrix-legend{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-2)}
+.hint-box{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;font-size:12px;color:#92400e;display:flex;gap:8px;align-items:flex-start;line-height:1.6}
+.info-box{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;font-size:12px;color:#1e40af;line-height:1.6}
+
+.score-ring{width:110px;height:110px;border-radius:50%;background:conic-gradient(#22c55e 0 78%,#e2e8f0 78% 100%);display:flex;align-items:center;justify-content:center;margin:auto}
+.score-ring .inner{width:84px;height:84px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.score-ring .sv{font-size:26px;font-weight:700;color:#15803d}
+.score-ring .sl{font-size:10px;color:var(--text-3)}
+
+.pill-toggle{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--text-2);cursor:pointer}
+.switch{width:36px;height:20px;background:#cbd5e1;border-radius:10px;position:relative;transition:.2s}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.2s}
+.switch.on{background:var(--primary)} .switch.on::after{left:18px}
+
+@media print{.sidebar,.topbar,.toolbar,.no-print{display:none!important}.content{overflow:visible}}
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <!-- ================= 侧边栏 ================= -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">投</div>
+      <div class="logo-text">智能投资测算<small>决策支持系统 SIS · V1.0</small></div>
+    </div>
+    <nav class="nav">
+      <div class="nav-group">总览</div>
+      <div class="nav-item active" data-page="dashboard"><span class="ico">📊</span>工作台看板</div>
+      <div class="nav-group">核心业务</div>
+      <div class="nav-item" data-page="projects"><span class="ico">🗂️</span>项目库</div>
+      <div class="nav-item" data-page="calc"><span class="ico">🧮</span>财务测算 <span class="tag blue" style="margin-left:auto">P0</span></div>
+      <div class="nav-item" data-page="risk"><span class="ico">⚠️</span>风险分析 <span class="tag blue" style="margin-left:auto">P0</span></div>
+      <div class="nav-item" data-page="compare"><span class="ico">⚖️</span>方案比选</div>
+      <div class="nav-item" data-page="report"><span class="ico">📄</span>报告中心</div>
+      <div class="nav-group">智能与协同</div>
+      <div class="nav-item" data-page="ai"><span class="ico">🤖</span>AI 决策引擎 <span class="tag purple" style="margin-left:auto">P2</span></div>
+      <div class="nav-item" data-page="collab"><span class="ico">👥</span>协同编辑</div>
+      <div class="nav-item" data-page="approval"><span class="ico">✅</span>审批中心<span class="badge">3</span></div>
+      <div class="nav-group">系统</div>
+      <div class="nav-item" data-page="admin"><span class="ico">⚙️</span>权限与合规</div>
+    </nav>
+    <div class="user-card">
+      <div class="avatar">林</div>
+      <div><div class="uname">林逸舟</div><div class="urole">投资分析师</div></div>
+    </div>
+  </aside>
+
+  <!-- ================= 主区域 ================= -->
+  <div class="main">
+    <header class="topbar">
+      <h1 id="pageTitle">工作台看板</h1>
+      <span class="crumb" id="pageCrumb">总览 / 工作台看板</span>
+      <div class="sp"></div>
+      <div class="search">🔍 <input placeholder="搜索项目 / 方案 / 报告…"></div>
+      <button class="icon-btn" onclick="toast('消息中心：消息推送已订阅（邮件 + 站内信）')">🔔<span class="dot"></span></button>
+      <button class="icon-btn" onclick="toast('已切换至最新模型版本 FinModel v3.2')">🌐</button>
+      <button class="btn primary" onclick="openModal('newProjectModal')">＋ 新建项目</button>
+    </header>
+
+    <div class="content">
+
+    <!-- ================= P1 工作台看板 ================= -->
+    <section class="page active" id="page-dashboard">
+      <div class="grid" style="grid-template-columns:repeat(4,1fr)">
+        <div class="card kpi"><div class="lbl">在管项目总数</div><div class="val">36 <small>个</small></div><div class="trd up">▲ 本月新增 4 个</div></div>
+        <div class="card kpi green"><div class="lbl">组合加权平均 IRR</div><div class="val">13.8<small>%</small></div><div class="trd up">▲ 较上季 +0.6pct</div></div>
+        <div class="card kpi orange"><div class="lbl">组合总 NPV（WACC 8%）</div><div class="val">4.27 <small>亿元</small></div><div class="trd up">▲ 较基准 +12.4%</div></div>
+        <div class="card kpi red"><div class="lbl">风险预警</div><div class="val">2 <small>红 / 5 黄</small></div><div class="trd down">原材料价格超阈值</div></div>
+      </div>
+
+      <div class="grid" style="grid-template-columns:2fr 1fr;margin-top:14px">
+        <div class="card">
+          <div class="card-h"><h3>投资组合绩效</h3><span class="sub">NPV — IRR 分布（气泡大小 = 投资额）</span><div class="sp"></div>
+            <div class="filter-seg"><button class="on">全部</button><button>在建</button><button>已投运</button><button>储备</button></div>
+          </div>
+          <div class="card-b"><div id="chartBubble" class="chart"></div></div>
+        </div>
+        <div class="card">
+          <div class="card-h"><h3>风险信号灯</h3><span class="sub">FR-02-04 动态阈值监控</span></div>
+          <div class="card-b" style="padding:10px 16px">
+            <table class="tbl">
+              <tr><th>监控变量</th><th>当前值</th><th>状态</th></tr>
+              <tr><td>钢材价格（元/吨）</td><td class="num">4,380</td><td><span class="dotlight r"></span> <span class="tag red">超上限</span></td></tr>
+              <tr><td>贷款利率 LPR</td><td class="num">3.45%</td><td><span class="dotlight g"></span> <span class="tag green">正常</span></td></tr>
+              <tr><td>电价（元/kWh）</td><td class="num">0.58</td><td><span class="dotlight y"></span> <span class="tag orange">接近下限</span></td></tr>
+              <tr><td>水泥价格（元/吨）</td><td class="num">395</td><td><span class="dotlight g"></span> <span class="tag green">正常</span></td></tr>
+              <tr><td>产能利用率</td><td class="num">91%</td><td><span class="dotlight g"></span> <span class="tag green">正常</span></td></tr>
+            </table>
+            <div class="hint-box" style="margin-top:12px">⚠️ <b>策略建议：</b>钢材价格突破阈值上限 5.2%，建议对「城北光伏二期」启动套期保值评估，并复核建设投资估算。</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid" style="grid-template-columns:1fr 1fr 1fr;margin-top:14px">
+        <div class="card">
+          <div class="card-h"><h3>项目阶段分布</h3><div class="sp"></div><button class="btn ghost sm">下钻 ›</button></div>
+          <div class="card-b"><div id="chartStage" class="chart short"></div></div>
+        </div>
+        <div class="card">
+          <div class="card-h"><h3>行业分布（按投资额）</h3></div>
+          <div class="card-b"><div id="chartIndustry" class="chart short"></div></div>
+        </div>
+        <div class="card">
+          <div class="card-h"><h3>待办与审批</h3><div class="sp"></div><button class="btn ghost sm" onclick="go('approval')">全部 ›</button></div>
+          <div class="card-b flush">
+            <table class="tbl">
+              <tr><td><span class="tag red">加急</span></td><td>城北光伏二期 · 参数调整审批</td><td class="num">今天 10:24</td></tr>
+              <tr><td><span class="tag orange">待办</span></td><td>智慧物流园 · 可研报告复核</td><td class="num">昨天 16:02</td></tr>
+              <tr><td><span class="tag orange">待办</span></td><td>储能电站 A · 敏感性结果确认</td><td class="num">昨天 09:41</td></tr>
+              <tr><td><span class="tag gray">知会</span></td><td>水务改扩建 · 模型版本升级通知</td><td class="num">07-28</td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= P2 项目库 ================= -->
+    <section class="page" id="page-projects">
+      <div class="toolbar">
+        <div class="filter-seg"><button class="on">全部 36</button><button>测算中 8</button><button>评审中 5</button><button>已立项 15</button><button>已投运 8</button></div>
+        <div class="sp"></div>
+        <button class="btn">🏷️ 标签筛选</button>
+        <button class="btn">⇪ Excel 导入</button>
+        <button class="btn primary" onclick="openModal('newProjectModal')">＋ 新建项目</button>
+      </div>
+      <div class="card">
+        <div class="card-b flush">
+          <table class="tbl">
+            <thead><tr><th>项目名称</th><th>行业 / 标签</th><th>归属部门</th><th class="num">总投资(万元)</th><th class="num">NPV(万元)</th><th class="num">IRR</th><th class="num">回收期(年)</th><th>状态</th><th>负责人</th><th>操作</th></tr></thead>
+            <tbody id="projectTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= P3 财务测算 ================= -->
+    <section class="page" id="page-calc">
+      <div class="card" style="margin-bottom:14px">
+        <div class="flow-steps">
+          <div class="fstep done"><span class="n">✓</span><span class="t">① 投资估算</span></div><div class="line"></div>
+          <div class="fstep done"><span class="n">✓</span><span class="t">② 资金筹措</span></div><div class="line"></div>
+          <div class="fstep done"><span class="n">✓</span><span class="t">③ 成本费用</span></div><div class="line"></div>
+          <div class="fstep cur"><span class="n">4</span><span class="t">④ 财务评价</span></div><div class="line"></div>
+          <div class="fstep"><span class="n">5</span><span class="t">⑤ 目标反算</span></div><div class="line"></div>
+          <div class="fstep"><span class="n">6</span><span class="t">⑥ 报告生成</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="tabs">
+          <div class="tab active" data-tab="t-invest">投资估算与筹措</div>
+          <div class="tab" data-tab="t-cost">成本与利润</div>
+          <div class="tab" data-tab="t-indicator">财务指标</div>
+          <div class="tab" data-tab="t-cashflow">现金流量表</div>
+          <div class="tab" data-tab="t-reverse">目标反算 <span class="tag cyan">P1</span></div>
+        </div>
+        <div class="card-b">
+
+          <!-- 投资估算 -->
+          <div class="tabpane" id="t-invest">
+            <div class="toolbar">
+              <b>项目总投资估算</b><span class="tag gray">模型版本 FinModel v3.2</span><span class="tag gray">参数版本 P-20260730</span>
+              <div class="sp"></div>
+              <button class="btn sm" onclick="toast('已打开投资分项明细编辑（原型演示）')">编辑分项明细</button>
+              <button class="btn sm danger" onclick="toast('校验通过：分项合计 = 总投资 ✓')">校验合计</button>
+            </div>
+            <div class="grid" style="grid-template-columns:1.4fr 1fr">
+              <table class="tbl">
+                <thead><tr><th>投资分项</th><th class="num">金额(万元)</th><th class="num">占比</th><th>来源 / 备注</th></tr></thead>
+                <tbody>
+                  <tr><td>一、建设投资</td><td class="num">52,800</td><td class="num">82.4%</td><td>工程量清单（技术部）</td></tr>
+                  <tr><td style="padding-left:24px;color:var(--text-2)">其中：建筑工程费</td><td class="num">21,400</td><td class="num">33.4%</td><td>—</td></tr>
+                  <tr><td style="padding-left:24px;color:var(--text-2)">设备购置及安装费</td><td class="num">26,900</td><td class="num">42.0%</td><td>—</td></tr>
+                  <tr><td style="padding-left:24px;color:var(--text-2)">其他费用（含预备费）</td><td class="num">4,500</td><td class="num">7.0%</td><td>—</td></tr>
+                  <tr><td>二、建设期利息</td><td class="num">3,260</td><td class="num">5.1%</td><td>利率 3.45%，工期 24 月</td></tr>
+                  <tr><td>三、流动资金</td><td class="num">8,000</td><td class="num">12.5%</td><td>分项详细估算法</td></tr>
+                  <tr class="total"><td>项目总投资</td><td class="num">64,060</td><td class="num">100%</td><td>✓ 合计校验通过</td></tr>
+                </tbody>
+              </table>
+              <div>
+                <b style="font-size:13px">资金筹措方案（分期）</b>
+                <div id="chartFund" class="chart short" style="margin-top:8px"></div>
+                <table class="tbl" style="margin-top:8px">
+                  <tr><th>渠道</th><th class="num">金额(万元)</th><th class="num">比例</th></tr>
+                  <tr><td>自有资金（资本金）</td><td class="num">22,421</td><td class="num">35%</td></tr>
+                  <tr><td>银行贷款（≤65%上限）</td><td class="num">38,436</td><td class="num">60%</td></tr>
+                  <tr><td>专项债 / 其他</td><td class="num">3,203</td><td class="num">5%</td></tr>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- 成本费用 -->
+          <div class="tabpane" id="t-cost" style="display:none">
+            <div class="toolbar"><b>成本费用估算与利润流向</b><span class="sub">达产年（第 4 年） · 折旧政策：年限平均法 20 年 · 所得税 25%</span><div class="sp"></div>
+              <button class="btn sm">切换瀑布图 / 桑基图</button></div>
+            <div class="grid" style="grid-template-columns:1.5fr 1fr">
+              <div id="chartWaterfall" class="chart tall"></div>
+              <table class="tbl">
+                <thead><tr><th>成本费用项</th><th class="num">金额(万元/年)</th></tr></thead>
+                <tbody>
+                  <tr><td>外购原材料及燃料动力</td><td class="num">18,600</td></tr>
+                  <tr><td>人工及制造费用</td><td class="num">4,200</td></tr>
+                  <tr><td>折旧费</td><td class="num">2,640</td></tr>
+                  <tr><td>摊销费</td><td class="num">380</td></tr>
+                  <tr><td>财务费用（利息）</td><td class="num">1,326</td></tr>
+                  <tr class="total"><td>总成本费用</td><td class="num">27,146</td></tr>
+                  <tr><td>营业收入（含税）</td><td class="num">38,500</td></tr>
+                  <tr><td>利润总额</td><td class="num">9,214</td></tr>
+                  <tr class="total"><td>净利润</td><td class="num">6,910</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- 财务指标 -->
+          <div class="tabpane" id="t-indicator" style="display:none">
+            <div class="toolbar"><b>核心财务评价指标</b><span class="sub">折现率 WACC = 8.0%（取值来源：集团基准收益率 2026 版）</span><div class="sp"></div>
+              <button class="btn sm" onclick="toast('折现率配置需要财务专员权限，已记录取值来源')">配置折现率</button></div>
+            <div class="grid" style="grid-template-columns:repeat(5,1fr)">
+              <div class="card kpi green"><div class="lbl">净现值 NPV</div><div class="val">12,480<small>万元</small></div><div class="trd up">＞0，项目可行</div></div>
+              <div class="card kpi"><div class="lbl">内部收益率 IRR</div><div class="val">14.6<small>%</small></div><div class="trd up">＞ WACC 8%</div></div>
+              <div class="card kpi"><div class="lbl">动态回收期</div><div class="val">7.3<small>年</small></div><div class="trd">含建设期 2 年</div></div>
+              <div class="card kpi orange"><div class="lbl">总投资收益率 ROI</div><div class="val">11.2<small>%</small></div><div class="trd">达产年均值</div></div>
+              <div class="card kpi"><div class="lbl">资本金净利润率</div><div class="val">18.9<small>%</small></div><div class="trd up">优于行业均值 15%</div></div>
+            </div>
+            <div id="chartIndicator" class="chart" style="margin-top:14px"></div>
+          </div>
+
+          <!-- 现金流量表 -->
+          <div class="tabpane" id="t-cashflow" style="display:none">
+            <div class="toolbar"><b>现金流量表</b>
+              <div class="filter-seg"><button class="on">项目投资现金流</button><button>资本金现金流</button><button>财务计划现金流</button></div>
+              <div class="sp"></div>
+              <button class="btn sm" onclick="toast('已导出：项目投资现金流量表.xlsx')">导出 Excel</button>
+              <button class="btn sm" onclick="toast('已导出：现金流量表.pdf')">导出 PDF</button>
+            </div>
+            <div class="grid" style="grid-template-columns:1.3fr 1fr">
+              <div style="overflow-x:auto">
+                <table class="tbl">
+                  <thead><tr><th>年份</th><th class="num">2026<br>建设期1</th><th class="num">2027<br>建设期2</th><th class="num">2028<br>投产期</th><th class="num">2029<br>达产</th><th class="num">2030<br>达产</th><th class="num">2031+</th></tr></thead>
+                  <tbody>
+                    <tr><td>现金流入</td><td class="num">—</td><td class="num">—</td><td class="num">30,800</td><td class="num">38,500</td><td class="num">38,500</td><td class="num">38,500</td></tr>
+                    <tr><td>现金流出</td><td class="num">26,400</td><td class="num">29,660</td><td class="num">24,900</td><td class="num">29,450</td><td class="num">29,450</td><td class="num">29,450</td></tr>
+                    <tr><td>净现金流量</td><td class="num" style="color:var(--danger)">-26,400</td><td class="num" style="color:var(--danger)">-29,660</td><td class="num">5,900</td><td class="num">9,050</td><td class="num">9,050</td><td class="num">9,050</td></tr>
+                    <tr><td>累计净现金流</td><td class="num" style="color:var(--danger)">-26,400</td><td class="num" style="color:var(--danger)">-56,060</td><td class="num" style="color:var(--danger)">-50,160</td><td class="num" style="color:var(--danger)">-41,110</td><td class="num" style="color:var(--danger)">-32,060</td><td class="num">…</td></tr>
+                    <tr><td>折现净现金流 (8%)</td><td class="num">-24,444</td><td class="num">-25,434</td><td class="num">4,683</td><td class="num">6,654</td><td class="num">6,161</td><td class="num">…</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div id="chartCashflow" class="chart"></div>
+            </div>
+          </div>
+
+          <!-- 目标反算 -->
+          <div class="tabpane" id="t-reverse" style="display:none">
+            <div class="grid" style="grid-template-columns:1fr 1.2fr">
+              <div>
+                <b style="font-size:13px">反算条件设置</b>
+                <div class="form-grid" style="grid-template-columns:1fr 1fr;margin-top:12px">
+                  <div class="fld"><label>目标指标 <span class="req">*</span></label>
+                    <select><option>目标 IRR ≥ 15%</option><option>目标 NPV ≥ 15,000 万元</option><option>动态回收期 ≤ 7 年</option></select></div>
+                  <div class="fld"><label>反算变量 <span class="req">*</span></label>
+                    <select><option>产品售价</option><option>建设投资额</option><option>年产量</option><option>单位成本</option></select></div>
+                  <div class="fld"><label>变量下限</label><input value="0.52 元/kWh"></div>
+                  <div class="fld"><label>变量上限</label><input value="0.65 元/kWh"></div>
+                  <div class="fld"><label>求解精度</label><input value="0.001"></div>
+                  <div class="fld"><label>其余变量</label><input value="保持基准方案不变" disabled></div>
+                </div>
+                <div style="margin-top:14px;display:flex;gap:10px">
+                  <button class="btn primary" onclick="toast('求解完成：二分迭代 23 次，收敛 ✓')">▶ 开始反算</button>
+                  <button class="btn" onclick="toast('已重置为基准方案参数')">重置</button>
+                </div>
+                <div class="hint-box" style="margin-top:14px">📌 反算结果须标注适用边界与假设：本结果基于其余变量维持基准值不变，售价超出 [0.52, 0.65] 区间时结论失效。</div>
+              </div>
+              <div>
+                <b style="font-size:13px">反算结果</b>
+                <div class="card" style="margin-top:12px;background:#f0fdf4;border-color:#bbf7d0">
+                  <div class="card-b" style="display:flex;gap:24px;align-items:center">
+                    <div><div style="font-size:12px;color:var(--text-2)">临界售价（IRR=15%）</div>
+                      <div style="font-size:30px;font-weight:700;color:#15803d">0.583 <small style="font-size:13px">元/kWh</small></div></div>
+                    <div style="font-size:12px;color:var(--text-2);line-height:1.8">较基准售价 0.58 元 上浮 <b>0.5%</b><br>敏感说明：售价每 ±1%，IRR 变动约 ∓0.42pct<br>置信水平：确定性解（非概率）</div>
+                  </div>
+                </div>
+                <div id="chartReverse" class="chart short" style="margin-top:10px"></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= P4 风险分析 ================= -->
+    <section class="page" id="page-risk">
+      <div class="card">
+        <div class="tabs">
+          <div class="tab active" data-tab="r-sens">敏感性分析 <span class="tag blue">P0</span></div>
+          <div class="tab" data-tab="r-bep">盈亏平衡 <span class="tag cyan">P1</span></div>
+          <div class="tab" data-tab="r-mc">蒙特卡洛模拟 <span class="tag cyan">P1</span></div>
+          <div class="tab" data-tab="r-warn">风险预警 <span class="tag cyan">P1</span></div>
+        </div>
+        <div class="card-b">
+
+          <div class="tabpane" id="r-sens">
+            <div class="toolbar"><b>多因素敏感性热力图</b><span class="sub">变量：售价 × 单位成本，输出：NPV（万元）</span><div class="sp"></div>
+              <span class="matrix-legend">波动区间 ±20%，步长 5%</span>
+              <button class="btn sm" onclick="toast('因素配置：当前叠加 2 个因素（上限可配置为 4 个）')">+ 叠加因素</button>
+            </div>
+            <div class="grid" style="grid-template-columns:1.5fr 1fr">
+              <div id="chartHeatmap" class="chart tall"></div>
+              <div>
+                <table class="tbl">
+                  <thead><tr><th>变量</th><th class="num">敏感系数</th><th class="num">临界值</th><th>等级</th></tr></thead>
+                  <tbody>
+                    <tr><td>产品售价</td><td class="num">4.82</td><td class="num">-10.4%</td><td><span class="tag red">高敏感</span></td></tr>
+                    <tr><td>单位成本</td><td class="num">-2.65</td><td class="num">+18.9%</td><td><span class="tag orange">中敏感</span></td></tr>
+                    <tr><td>建设投资</td><td class="num">-1.18</td><td class="num">+42.3%</td><td><span class="tag orange">中敏感</span></td></tr>
+                    <tr><td>建设工期</td><td class="num">-0.44</td><td class="num">—</td><td><span class="tag green">低敏感</span></td></tr>
+                  </tbody>
+                </table>
+                <div class="info-box" style="margin-top:12px">💡 <b>解读：</b>售价为首要敏感因素，售价下降超过 10.4% 时 NPV 转负，建议重点关注价格风险对冲。</div>
+                <div id="chartTornado" class="chart short" style="margin-top:10px"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="tabpane" id="r-bep" style="display:none">
+            <div class="toolbar"><b>盈亏平衡分析（BEP）</b><span class="sub">达产年口径</span><div class="sp"></div>
+              <button class="btn sm" onclick="toast('已导出盈亏平衡图.png')">导出图表</button></div>
+            <div class="grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:14px">
+              <div class="card kpi"><div class="lbl">BEP 产量</div><div class="val">6.24<small>万 kWh/年</small></div><div class="trd">占设计产能 62.4%</div></div>
+              <div class="card kpi orange"><div class="lbl">BEP 产能利用率</div><div class="val">62.4<small>%</small></div><div class="trd up">安全边际 37.6%</div></div>
+              <div class="card kpi green"><div class="lbl">BEP 售价</div><div class="val">0.512<small>元/kWh</small></div><div class="trd up">低于现行价 11.7%</div></div>
+            </div>
+            <div id="chartBEP" class="chart tall"></div>
+          </div>
+
+          <div class="tabpane" id="r-mc" style="display:none">
+            <div class="toolbar"><b>蒙特卡洛概率分析</b><span class="sub">模拟次数 10,000 · 随机种子 20260730（可复现）</span><div class="sp"></div>
+              <button class="btn sm" onclick="toast('分布配置：售价~三角分布(0.52,0.58,0.65)，成本~正态分布')">变量分布配置</button>
+              <button class="btn primary sm" onclick="toast('模拟完成：10,000 次抽样，耗时 38 秒 ≤ 1 分钟 ✓')">▶ 重新模拟</button>
+            </div>
+            <div class="grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px">
+              <div class="card kpi green"><div class="lbl">NPV 期望值</div><div class="val">11,960<small>万元</small></div></div>
+              <div class="card kpi"><div class="lbl">NPV＞0 概率</div><div class="val">86.3<small>%</small></div></div>
+              <div class="card kpi orange"><div class="lbl">VaR (95%)</div><div class="val">-3,240<small>万元</small></div></div>
+              <div class="card kpi red"><div class="lbl">亏损概率</div><div class="val">13.7<small>%</small></div></div>
+            </div>
+            <div class="grid" style="grid-template-columns:1.4fr 1fr">
+              <div id="chartMCHist" class="chart"></div>
+              <div id="chartMCCurve" class="chart"></div>
+            </div>
+          </div>
+
+          <div class="tabpane" id="r-warn" style="display:none">
+            <div class="toolbar"><b>智能风险预警</b><span class="sub">阈值规则由管理员配置 · 预警全程留痕</span><div class="sp"></div>
+              <button class="btn sm" onclick="go('admin')">⚙️ 阈值规则配置</button></div>
+            <table class="tbl">
+              <thead><tr><th>预警事件</th><th>监控变量</th><th class="num">当前值</th><th class="num">阈值区间</th><th class="num">偏离度</th><th>级别</th><th>推荐应对策略</th><th>时间</th></tr></thead>
+              <tbody>
+                <tr><td>钢材价格异常上涨</td><td>钢材(元/吨)</td><td class="num">4,380</td><td class="num">[3,600, 4,160]</td><td class="num" style="color:var(--danger)">+5.3%</td><td><span class="dotlight r"></span> 红灯</td><td>启动套保评估；复核建设投资</td><td>07-31 09:12</td></tr>
+                <tr><td>电价接近下限</td><td>电价(元/kWh)</td><td class="num">0.58</td><td class="num">[0.55, 0.68]</td><td class="num" style="color:var(--warning)">距下限 5.4%</td><td><span class="dotlight y"></span> 黄灯</td><td>跟踪电价政策；压力情景复测</td><td>07-30 17:45</td></tr>
+                <tr><td>贷款利率下行</td><td>LPR</td><td class="num">3.45%</td><td class="num">[3.2%, 4.2%]</td><td class="num">—</td><td><span class="dotlight g"></span> 绿灯</td><td>可评估置换存量贷款</td><td>07-29 10:03</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= P5 方案比选 ================= -->
+    <section class="page" id="page-compare">
+      <div class="toolbar">
+        <b style="font-size:14px">多方案横向对比</b><span class="tag gray">已选 4 个方案</span>
+        <div class="sp"></div>
+        <button class="btn" onclick="toast('已添加至对比矩阵（原型演示）')">＋ 添加方案</button>
+        <button class="btn primary" onclick="toast('组合优化求解完成：线性规划，目标=组合NPV最大，约束=资金池8亿')">⚡ 运行组合优化</button>
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-h"><h3>对比矩阵</h3><span class="sub">指标口径统一 · 模型版本一致（v3.2）</span><div class="sp"></div><span class="tag green">排序建议：B › A › D › C</span></div>
+        <div class="card-b flush" style="overflow-x:auto">
+          <table class="tbl">
+            <thead><tr><th>指标</th><th class="num">方案A 光伏一期</th><th class="num">方案B 光伏二期</th><th class="num">方案C 储能电站</th><th class="num">方案D 增量配网</th></tr></thead>
+            <tbody>
+              <tr><td>总投资（万元）</td><td class="num">64,060</td><td class="num">58,200</td><td class="num">41,800</td><td class="num">35,600</td></tr>
+              <tr><td>NPV（万元）</td><td class="num">12,480</td><td class="num" style="color:var(--success);font-weight:700">14,920 ★</td><td class="num">6,340</td><td class="num">8,150</td></tr>
+              <tr><td>IRR</td><td class="num">14.6%</td><td class="num" style="color:var(--success);font-weight:700">16.8% ★</td><td class="num">11.2%</td><td class="num">13.5%</td></tr>
+              <tr><td>动态回收期（年）</td><td class="num">7.3</td><td class="num" style="color:var(--success);font-weight:700">6.5 ★</td><td class="num">8.9</td><td class="num">7.8</td></tr>
+              <tr><td>资本金净利润率</td><td class="num">18.9%</td><td class="num">21.4%</td><td class="num">14.2%</td><td class="num">16.7%</td></tr>
+              <tr><td>NPV＜0 概率（蒙特卡洛）</td><td class="num">13.7%</td><td class="num">9.2%</td><td class="num" style="color:var(--danger)">24.5%</td><td class="num">15.8%</td></tr>
+              <tr><td>风险等级</td><td><span class="tag orange">中</span></td><td><span class="tag green">低</span></td><td><span class="tag red">高</span></td><td><span class="tag orange">中</span></td></tr>
+              <tr><td>AI 综合评分</td><td class="num">78</td><td class="num" style="color:var(--success);font-weight:700">86 ★</td><td class="num">62</td><td class="num">74</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="grid" style="grid-template-columns:1.3fr 1fr">
+        <div class="card">
+          <div class="card-h"><h3>组合优化 · 帕累托前沿</h3><span class="sub">NPV — 风险（约束：资金池 ≤ 8 亿元）</span></div>
+          <div class="card-b"><div id="chartPareto" class="chart"></div></div>
+        </div>
+        <div class="card">
+          <div class="card-h"><h3>Top-N 组合推荐</h3><span class="sub">线性规划求解 · 结果可解释</span></div>
+          <div class="card-b" style="padding:10px 16px">
+            <div class="notif" style="border-color:#bbf7d0;background:#f0fdf4">
+              <div class="ni" style="background:#dcfce7">🥇</div>
+              <div><div class="nt">组合 1：B + D（推荐）</div>
+              <div class="nd">总 NPV <b>23,070 万元</b> · 投资 9.38 亿（需追加额度）→ 调整后可行 · 风险分散度 优</div></div>
+            </div>
+            <div class="notif">
+              <div class="ni" style="background:#f1f5f9">🥈</div>
+              <div><div class="nt">组合 2：B + C 部分份额</div>
+              <div class="nd">总 NPV 19,860 万元 · 投资 7.96 亿 ✓ 满足资金池 · 风险分散度 良</div></div>
+            </div>
+            <div class="notif">
+              <div class="ni" style="background:#f1f5f9">🥉</div>
+              <div><div class="nt">组合 3：A + D 分期实施</div>
+              <div class="nd">总 NPV 18,420 万元 · 首期投资 6.4 亿 · 节奏稳健</div></div>
+            </div>
+            <div class="hint-box" style="margin-top:6px">📐 求解说明：目标函数 max Σ(NPVᵢ·xᵢ)，约束 Σ(投资ᵢ·xᵢ) ≤ 80,000 万；xᵢ∈{0,1}。影子价格显示资金池每放宽 1 亿元，组合 NPV 约 +2,300 万元。</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= P6 报告中心 ================= -->
+    <section class="page" id="page-report">
+      <div class="grid" style="grid-template-columns:260px 1fr">
+        <div>
+          <div class="card" style="margin-bottom:14px">
+            <div class="card-h"><h3>报告模板</h3></div>
+            <div class="card-b" style="padding:10px">
+              <div class="nav-item active" style="border-radius:6px;margin-bottom:4px">📑 投资回报分析报告</div>
+              <div class="nav-item" style="border-radius:6px;margin-bottom:4px;color:var(--text)">📋 可行性研究摘要</div>
+              <div class="nav-item" style="border-radius:6px;margin-bottom:4px;color:var(--text)">📊 风险评估专项报告</div>
+              <div class="nav-item" style="border-radius:6px;color:var(--text)">📈 组合决策建议书</div>
+            </div>
+          </div>
+          <div class="info-box">🔖 报告自动引用<b>参数版本</b>与<b>数据来源</b>，支持二次编辑与导出，模板可复用。</div>
+        </div>
+        <div class="card">
+          <div class="card-h">
+            <h3>《城北光伏电站二期 投资回报分析报告》</h3>
+            <div class="sp"></div>
+            <span class="tag gray">参数版本 P-20260730</span>
+            <span class="tag gray">模型 v3.2</span>
+            <button class="btn sm">✏️ 编辑</button>
+            <button class="btn sm" onclick="toast('已导出 Word 文档')">导出 Word</button>
+            <button class="btn primary sm" onclick="toast('已导出 PDF（含数字签章占位）')">导出 PDF</button>
+          </div>
+          <div class="card-b" style="line-height:1.9;font-size:13px">
+            <h2 style="text-align:center;font-size:18px;margin-bottom:4px">投资回报分析报告（摘要）</h2>
+            <p style="text-align:center;color:var(--text-3);font-size:11px;margin-bottom:16px">编制：林逸舟 · 复核：王会计 · 2026-08-01 · 密级：内部</p>
+            <h4 style="margin:10px 0 6px">一、项目概况</h4>
+            <p>本项目位于城北开发区，规划建设装机容量 100MW 光伏电站，建设期 24 个月，运营期 20 年。项目总投资 <b>58,200 万元</b>，其中资本金比例 35%。</p>
+            <h4 style="margin:14px 0 6px">二、核心指标摘要</h4>
+            <table class="tbl">
+              <tr><th>指标</th><th class="num">数值</th><th>评价基准</th><th>结论</th></tr>
+              <tr><td>NPV（WACC 8%）</td><td class="num">14,920 万元</td><td>＞ 0</td><td><span class="tag green">满足</span></td></tr>
+              <tr><td>IRR</td><td class="num">16.8%</td><td>＞ 8%</td><td><span class="tag green">满足</span></td></tr>
+              <tr><td>动态回收期</td><td class="num">6.5 年</td><td>≤ 10 年</td><td><span class="tag green">满足</span></td></tr>
+              <tr><td>资本金净利润率</td><td class="num">21.4%</td><td>≥ 15%</td><td><span class="tag green">满足</span></td></tr>
+            </table>
+            <h4 style="margin:14px 0 6px">三、风险分析结论</h4>
+            <p>蒙特卡洛模拟（10,000 次）显示 NPV＞0 概率为 <b>90.8%</b>；售价为第一敏感因素（敏感系数 4.82）。建议通过长期购电协议（PPA）锁定 80% 电量电价。</p>
+            <h4 style="margin:14px 0 6px">四、结论与建议</h4>
+            <p>项目各项财务指标均优于基准，风险可控，<b style="color:var(--success)">建议立项</b>，提请投资决策委员会审批。</p>
+            <div style="margin-top:24px;display:flex;gap:40px;color:var(--text-3);font-size:12px">
+              <span>编制人：＿＿＿＿＿</span><span>复核人：＿＿＿＿＿</span><span>审批人：＿＿＿＿＿</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= P7 AI 决策引擎 ================= -->
+    <section class="page" id="page-ai">
+      <div class="grid" style="grid-template-columns:repeat(3,1fr)">
+        <div class="ai-panel">
+          <div class="ai-h">🤖 智能参数推荐 <span class="ai-badge">FR-05-01</span></div>
+          <p style="font-size:12px;line-height:1.7;color:#4c1d95">基于同行业 23 个历史项目，推荐 <b>光伏行业 WACC 基准 7.5%–8.5%</b>（当前取值 8.0% 合理）；折旧政策推荐「年限平均法 20 年」，与 87% 同类项目一致。</p>
+          <div style="margin-top:10px;display:flex;gap:8px"><button class="btn sm" onclick="toast('已将推荐参数应用至当前方案，变更已留痕')">应用推荐</button><button class="btn sm ghost">查看依据来源 ›</button></div>
+        </div>
+        <div class="ai-panel">
+          <div class="ai-h">🔄 历史数据反哺 <span class="ai-badge">FR-05-02</span></div>
+          <p style="font-size:12px;line-height:1.7;color:#4c1d95">已关联 8 个已投运项目实际数据：造价偏差率中位数 <b>+3.2%</b>、发电量偏差率 <b>-1.8%</b>，已自动注入敏感性分析波动区间，测算误差收窄 <b>31%</b>。</p>
+          <div style="margin-top:10px;display:flex;gap:8px"><button class="btn sm" onclick="toast('偏差明细：校验通过后入库（原型演示）')">查看偏差明细</button></div>
+        </div>
+        <div class="ai-panel">
+          <div class="ai-h">🏷️ 模型与版本管理 <span class="ai-badge">架构要求</span></div>
+          <p style="font-size:12px;line-height:1.7;color:#4c1d95">ML 打分模型 <b>ScoreModel v1.4</b>（AUC 0.87）与财务引擎解耦部署，支持灰度发布与回滚，全部推理记录可追溯。</p>
+          <div style="margin-top:10px;display:flex;gap:8px"><button class="btn sm" onclick="toast('模型版本列表：v1.4（当前）/ v1.3 / v1.2')">版本列表</button></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <div class="card-h"><h3>智能项目打分</h3><span class="sub">FR-05-03 · 模型可解释 · 建议仅供参考，不替代人工决策</span><div class="sp"></div>
+          <button class="btn sm" onclick="toast('特征重要性：IRR 32%、风险 24%、战略匹配 18%、资源占用 14%、其他 12%')">特征重要性</button></div>
+        <div class="card-b">
+          <div class="grid" style="grid-template-columns:repeat(4,1fr)">
+            <div class="card" style="border-color:#bbf7d0"><div class="card-b" style="text-align:center">
+              <div class="score-ring"><div class="inner"><div class="sv">86</div><div class="sl">综合评分</div></div></div>
+              <div style="margin-top:10px;font-weight:600">光伏二期</div>
+              <span class="tag green" style="margin-top:6px">✅ 建议立项</span>
+            </div></div>
+            <div class="card"><div class="card-b" style="text-align:center">
+              <div class="score-ring" style="background:conic-gradient(#3b82f6 0 78%,#e2e8f0 78% 100%)"><div class="inner"><div class="sv" style="color:#1d4ed8">78</div><div class="sl">综合评分</div></div></div>
+              <div style="margin-top:10px;font-weight:600">光伏一期</div>
+              <span class="tag blue" style="margin-top:6px">✅ 建议立项</span>
+            </div></div>
+            <div class="card"><div class="card-b" style="text-align:center">
+              <div class="score-ring" style="background:conic-gradient(#f59e0b 0 74%,#e2e8f0 74% 100%)"><div class="inner"><div class="sv" style="color:#b45309">74</div><div class="sl">综合评分</div></div></div>
+              <div style="margin-top:10px;font-weight:600">增量配网</div>
+              <span class="tag orange" style="margin-top:6px">⏸ 有条件推进</span>
+            </div></div>
+            <div class="card" style="border-color:#fecaca"><div class="card-b" style="text-align:center">
+              <div class="score-ring" style="background:conic-gradient(#ef4444 0 62%,#e2e8f0 62% 100%)"><div class="inner"><div class="sv" style="color:#b91c1c">62</div><div class="sl">综合评分</div></div></div>
+              <div style="margin-top:10px;font-weight:600">储能电站</div>
+              <span class="tag red" style="margin-top:6px">⏸ 暂缓推进</span>
+            </div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= P8 协同编辑 ================= -->
+    <section class="page" id="page-collab">
+      <div class="toolbar">
+        <b style="font-size:14px">城北光伏二期 · 测算底稿</b>
+        <span class="tag green">● 已自动保存 10:42:17</span>
+        <div class="sp"></div>
+        <div style="display:flex;align-items:center;gap:-6px">
+          <div class="avatar" style="width:26px;height:26px;font-size:11px" title="林逸舟（投资）">林</div>
+          <div class="avatar" style="width:26px;height:26px;font-size:11px;background:linear-gradient(135deg,#22c55e,#0ea5e9);margin-left:-6px" title="王会计（财务）">王</div>
+          <div class="avatar" style="width:26px;height:26px;font-size:11px;background:linear-gradient(135deg,#8b5cf6,#ec4899);margin-left:-6px" title="赵工（技术）">赵</div>
+          <span style="font-size:11px;color:var(--text-2);margin-left:8px">3 人在线</span>
+        </div>
+        <button class="btn sm">🔒 锁定区域</button>
+        <button class="btn primary sm" onclick="toast('已提交复核，流转至财务专员王会计')">提交复核</button>
+      </div>
+      <div class="grid" style="grid-template-columns:1.5fr 1fr">
+        <div class="card">
+          <div class="card-h"><h3>基础数据协同表</h3><span class="sub">技术部维护工程量 · 财务部维护折旧/税率</span></div>
+          <div class="card-b flush">
+            <table class="tbl">
+              <thead><tr><th>数据项</th><th>责任部门</th><th class="num">当前值</th><th>状态</th><th>最后编辑</th></tr></thead>
+              <tbody>
+                <tr><td>光伏组件工程量（MWp）</td><td>技术部</td><td class="num">112.5</td><td><span class="tag green">已确认</span></td><td>赵工 · 10:38</td></tr>
+                <tr style="background:#fffbeb"><td>建设工期（月）</td><td>技术部</td><td class="num">24</td><td><span class="tag orange">编辑中…</span></td><td>赵工 · 光标定位中</td></tr>
+                <tr><td>折旧政策</td><td>财务部</td><td class="num">年限平均法 20 年</td><td><span class="tag green">已确认</span></td><td>王会计 · 10:15</td></tr>
+                <tr><td>所得税率梯度</td><td>财务部</td><td class="num">25%（三免三减半）</td><td><span class="tag green">已确认</span></td><td>王会计 · 10:12</td></tr>
+                <tr style="background:#eff6ff"><td>贷款利率</td><td>投资部</td><td class="num">3.45%</td><td><span class="tag blue">待复核</span></td><td>林逸舟 · 09:56</td></tr>
+                <tr><td>年利用小时数（h）</td><td>技术部</td><td class="num">1,280</td><td><span class="tag green">已确认</span></td><td>赵工 · 09:40</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div>
+          <div class="card" style="margin-bottom:14px">
+            <div class="card-h"><h3>变更记录（可追溯）</h3></div>
+            <div class="card-b" style="padding:12px 16px">
+              <div class="timeline">
+                <div class="tl-item ok"><div class="tt">赵工 修改 工程量 108.0 → 112.5 MWp</div><div class="td">10:38 · 版本 v17 · 自动触发重算</div></div>
+                <div class="tl-item ok"><div class="tt">王会计 确认 折旧政策</div><div class="td">10:15 · 版本 v16 · 附确认意见</div></div>
+                <div class="tl-item cur"><div class="tt">林逸舟 修改 贷款利率 3.65% → 3.45%</div><div class="td">09:56 · 版本 v15 · 待财务复核</div></div>
+                <div class="tl-item wait"><div class="tt">合并冲突已解决（工期字段）</div><div class="td">09:20 · 采用锁定机制：技术部优先</div></div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-h"><h3>评论</h3></div>
+            <div class="card-b" style="padding:12px 16px">
+              <div class="notif"><div class="ni" style="background:#dcfce7">王</div><div><div class="nt">王会计 <span class="tm">10:20</span></div><div class="nd">@林逸舟 贷款利率下调后财务费用已同步更新，请复核现金流量表第 2 行。</div></div></div>
+              <div class="notif"><div class="ni" style="background:#ede9fe">赵</div><div><div class="nt">赵工 <span class="tm">09:45</span></div><div class="nd">工期暂按 24 个月，若组件到货延迟可能调整至 27 个月，已标注风险。</div></div></div>
+              <div style="display:flex;gap:8px;margin-top:6px"><input style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:12px" placeholder="发表评论，@ 提及同事…"><button class="btn primary sm" onclick="toast('评论已发送')">发送</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= P9 审批中心 ================= -->
+    <section class="page" id="page-approval">
+      <div class="grid" style="grid-template-columns:1.4fr 1fr">
+        <div class="card">
+          <div class="card-h"><h3>审批任务</h3><span class="sub">基于 BPM 流程引擎</span><div class="sp"></div>
+            <div class="filter-seg"><button class="on">待我审批 3</button><button>我发起的 5</button><button>抄送我 8</button><button>已完成</button></div>
+          </div>
+          <div class="card-b flush">
+            <table class="tbl">
+              <thead><tr><th>单据</th><th>类型</th><th>发起人</th><th>当前节点</th><th>状态</th><th>操作</th></tr></thead>
+              <tbody>
+                <tr><td>城北光伏二期 · 参数调整申请</td><td><span class="tag red">加急</span></td><td>林逸舟</td><td>财务负责人审批</td><td><span class="tag orange">审批中</span></td>
+                  <td><button class="btn primary sm" onclick="openModal('approveModal')">审批</button></td></tr>
+                <tr><td>智慧物流园 · 可研报告复核</td><td><span class="tag blue">报告</span></td><td>陈晓</td><td>投资委员会评审</td><td><span class="tag orange">审批中</span></td>
+                  <td><button class="btn sm" onclick="openModal('approveModal')">审批</button></td></tr>
+                <tr><td>储能电站A · 敏感性结果确认</td><td><span class="tag purple">风险</span></td><td>李峰</td><td>风险委员会会签</td><td><span class="tag orange">审批中</span></td>
+                  <td><button class="btn sm" onclick="openModal('approveModal')">审批</button></td></tr>
+                <tr><td>水务改扩建 · 立项申请</td><td><span class="tag green">立项</span></td><td>林逸舟</td><td>—</td><td><span class="tag green">已通过</span></td>
+                  <td><button class="btn ghost sm">查看</button></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-h"><h3>流程追踪</h3><span class="sub">城北光伏二期 · 参数调整</span></div>
+          <div class="card-b">
+            <div class="timeline">
+              <div class="tl-item ok"><div class="tt">发起申请 · 林逸舟</div><div class="td">07-31 09:12 · 调整贷款利率 3.65%→3.45%，附依据</div></div>
+              <div class="tl-item ok"><div class="tt">部门负责人 · 周经理</div><div class="td">07-31 11:05 · 同意 · 意见：依据充分</div></div>
+              <div class="tl-item cur"><div class="tt">财务负责人 · 郑总监</div><div class="td">当前节点 · 已等待 3 小时</div></div>
+              <div class="tl-item wait"><div class="tt">投资决策委员会</div><div class="td">待流转</div></div>
+              <div class="tl-item wait"><div class="tt">归档 · 审计留痕</div><div class="td">自动节点</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= P10 权限与合规 ================= -->
+    <section class="page" id="page-admin">
+      <div class="grid" style="grid-template-columns:1fr 1fr">
+        <div class="card">
+          <div class="card-h"><h3>角色权限矩阵（RBAC）</h3><span class="sub">最小够用原则</span><div class="sp"></div><button class="btn sm">＋ 新增角色</button></div>
+          <div class="card-b flush" style="overflow-x:auto">
+            <table class="tbl">
+              <thead><tr><th>功能 / 角色</th><th>投资分析师</th><th>财务专员</th><th>技术工程师</th><th>项目管理者</th><th>管理员</th></tr></thead>
+              <tbody>
+                <tr><td>基础数据录入</td><td>✅ 读写</td><td>👁 只读</td><td>✅ 读写</td><td>👁 只读</td><td>✅</td></tr>
+                <tr><td>折旧/税率参数</td><td>👁 只读</td><td>✅ 读写</td><td>—</td><td>👁 只读</td><td>✅</td></tr>
+                <tr><td>一键测算/报告</td><td>✅</td><td>✅</td><td>—</td><td>✅</td><td>✅</td></tr>
+                <tr><td>方案比选/组合优化</td><td>✅</td><td>👁 只读</td><td>—</td><td>✅</td><td>✅</td></tr>
+                <tr><td>审批流配置</td><td>—</td><td>—</td><td>—</td><td>—</td><td>✅</td></tr>
+                <tr><td>阈值规则配置</td><td>—</td><td>—</td><td>—</td><td>✅</td><td>✅</td></tr>
+                <tr><td>审计日志查看</td><td>—</td><td>—</td><td>—</td><td>✅</td><td>✅</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div>
+          <div class="card" style="margin-bottom:14px">
+            <div class="card-h"><h3>审批流配置（BPM）</h3><div class="sp"></div><button class="btn sm">编辑流程</button></div>
+            <div class="card-b">
+              <div class="flow-steps" style="padding:4px 0">
+                <div class="fstep done"><span class="n">1</span><span class="t">发起人</span></div><div class="line"></div>
+                <div class="fstep done"><span class="n">2</span><span class="t">部门负责人</span></div><div class="line"></div>
+                <div class="fstep cur"><span class="n">3</span><span class="t">财务负责人</span></div><div class="line"></div>
+                <div class="fstep"><span class="n">4</span><span class="t">投委会</span></div><div class="line"></div>
+                <div class="fstep"><span class="n">5</span><span class="t">归档</span></div>
+              </div>
+              <div style="margin-top:14px;display:flex;flex-direction:column;gap:10px">
+                <div class="pill-toggle"><div class="switch on" onclick="this.classList.toggle('on')"></div>参数调整超过 ±5% 时自动升级至投委会</div>
+                <div class="pill-toggle"><div class="switch on" onclick="this.classList.toggle('on')"></div>报告导出需经复核节点</div>
+                <div class="pill-toggle"><div class="switch" onclick="this.classList.toggle('on')"></div>高风险项目强制风险委员会会签</div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-h"><h3>审计日志（防篡改）</h3><span class="sub">完整率 100% · 哈希链校验 ✓</span><div class="sp"></div><button class="btn sm">导出</button></div>
+            <div class="card-b flush">
+              <table class="tbl">
+                <thead><tr><th>时间</th><th>操作人</th><th>行为</th><th>对象</th><th>校验</th></tr></thead>
+                <tbody>
+                  <tr><td>08-01 10:42</td><td>林逸舟</td><td>参数调整</td><td>贷款利率 3.65→3.45%</td><td><span class="tag green">✓</span></td></tr>
+                  <tr><td>08-01 10:38</td><td>赵工</td><td>数据编辑</td><td>工程量 v16→v17</td><td><span class="tag green">✓</span></td></tr>
+                  <tr><td>08-01 09:56</td><td>王会计</td><td>报告导出</td><td>光伏一期 PDF</td><td><span class="tag green">✓</span></td></tr>
+                  <tr><td>07-31 16:20</td><td>管理员</td><td>权限变更</td><td>新增「风险委员会」角色</td><td><span class="tag green">✓</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div>
+
+<!-- ================= 弹窗 & 抽屉 ================= -->
+<div class="modal-mask" id="newProjectModal">
+  <div class="modal">
+    <div class="m-h">新建投资项目<button class="x" onclick="closeModal('newProjectModal')">✕</button></div>
+    <div class="m-b">
+      <div class="form-grid">
+        <div class="fld"><label>项目名称 <span class="req">*</span></label><input placeholder="例：城东储能电站一期"></div>
+        <div class="fld"><label>所属行业 <span class="req">*</span></label><select><option>新能源（光伏/风电）</option><option>储能与电网</option><option>市政水务</option><option>交通物流</option><option>其他</option></select></div>
+        <div class="fld"><label>预估总投资（万元）</label><input placeholder="例：50,000"></div>
+        <div class="fld"><label>建设期（月）</label><input placeholder="例：24"></div>
+        <div class="fld"><label>归属部门</label><select><option>投资发展部</option><option>新能源事业部</option><option>基础设施部</option></select></div>
+        <div class="fld"><label>测算模板</label><select><option>标准财务评价模板（三版参数）</option><option>空白模板</option></select></div>
+      </div>
+      <div class="info-box" style="margin-top:14px">💡 创建后可通过 <b>Excel 模板导入</b> 快速填充基础数据，系统将自动校验模板格式并提示错误。</div>
+    </div>
+    <div class="m-f"><button class="btn" onclick="closeModal('newProjectModal')">取消</button><button class="btn primary" onclick="closeModal('newProjectModal');toast('项目创建成功，已跳转至数据录入向导（原型演示）')">创建并进入测算</button></div>
+  </div>
+</div>
+
+<div class="modal-mask" id="approveModal">
+  <div class="modal">
+    <div class="m-h">审批 · 参数调整申请<button class="x" onclick="closeModal('approveModal')">✕</button></div>
+    <div class="m-b">
+      <table class="tbl">
+        <tr><th style="width:110px">申请单号</th><td>AP-20260731-018</td></tr>
+        <tr><th>变更内容</th><td>贷款利率 3.65% → 3.45%（依据：LPR 最新报价）</td></tr>
+        <tr><th>影响测算</th><td>NPV +860 万元 · IRR +0.3pct · <span class="tag green">已自动重算</span></td></tr>
+        <tr><th>发起人</th><td>林逸舟（投资分析师） · 07-31 09:12</td></tr>
+      </table>
+      <div class="fld" style="margin-top:14px"><label>审批意见</label><input placeholder="请输入审批意见…"></div>
+    </div>
+    <div class="m-f">
+      <button class="btn danger" onclick="closeModal('approveModal');toast('已驳回，意见已通知发起人')">驳回</button>
+      <button class="btn primary" onclick="closeModal('approveModal');toast('已同意，流转至投资决策委员会，操作已留痕')">同意并流转</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">✅ 操作成功</div>
+
+<script>
+/* ================= 导航 ================= */
+const pageMeta={
+  dashboard:['工作台看板','总览 / 工作台看板'],
+  projects:['项目库','核心业务 / 项目库与知识沉淀'],
+  calc:['财务测算','核心业务 / 财务评价与智能测算（FR-01）'],
+  risk:['风险分析','核心业务 / 风险与不确定性分析（FR-02）'],
+  compare:['方案比选','核心业务 / 多方案比选与组合管理（FR-03）'],
+  report:['报告中心','核心业务 / 一键报告生成（FR-01-06）'],
+  ai:['AI 决策引擎','智能与协同 / AI 辅助决策（FR-05）'],
+  collab:['协同编辑','智能与协同 / 跨部门协同（FR-04-02）'],
+  approval:['审批中心','智能与协同 / BPM 审批流（FR-04-03）'],
+  admin:['权限与合规','系统 / 权限 · 审批 · 审计（FR-04-03）'],
+};
+const charts={};
+function go(key){
+  document.querySelectorAll('.nav-item[data-page]').forEach(n=>n.classList.toggle('active',n.dataset.page===key));
+  document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id==='page-'+key));
+  document.getElementById('pageTitle').textContent=pageMeta[key][0];
+  document.getElementById('pageCrumb').textContent=pageMeta[key][1];
+  setTimeout(()=>initPageCharts(key),60);
+}
+document.querySelectorAll('.nav-item[data-page]').forEach(n=>n.addEventListener('click',()=>go(n.dataset.page)));
+
+/* ================= Tabs ================= */
+document.querySelectorAll('.tabs').forEach(tabs=>{
+  tabs.querySelectorAll('.tab').forEach(tab=>{
+    tab.addEventListener('click',()=>{
+      tabs.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+      tab.classList.add('active');
+      const card=tabs.parentElement;
+      card.querySelectorAll('.tabpane').forEach(p=>p.style.display='none');
+      const pane=card.querySelector('#'+tab.dataset.tab);
+      pane.style.display='block';
+      setTimeout(()=>{Object.values(charts).forEach(c=>c&&c.resize&&c.resize());initPaneCharts(tab.dataset.tab);},60);
+    });
+  });
+});
+
+/* ================= 弹窗 & Toast ================= */
+function openModal(id){document.getElementById(id).classList.add('show')}
+function closeModal(id){document.getElementById(id).classList.remove('show')}
+document.querySelectorAll('.modal-mask').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('show')}));
+let toastTimer;
+function toast(msg){
+  const t=document.getElementById('toast');t.textContent='✅ '+msg;t.classList.add('show');
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2600);
+}
+
+/* ================= 项目库数据 ================= */
+const projects=[
+  ['城北光伏电站二期','新能源 · 光伏','新能源事业部',58200,14920,'16.8%',6.5,'测算中','blue','林逸舟'],
+  ['城东储能电站A','储能','新能源事业部',41800,6340,'11.2%',8.9,'评审中','orange','李峰'],
+  ['增量配电网改造','电网','基础设施部',35600,8150,'13.5%',7.8,'已立项','green','陈晓'],
+  ['智慧物流园','交通物流','投资发展部',72400,9850,'12.9%',8.2,'评审中','orange','周敏'],
+  ['水务改扩建三期','市政水务','基础设施部',28900,4320,'10.8%',9.1,'已投运','gray','吴迪'],
+  ['城南风电场','新能源 · 风电','新能源事业部',91500,18620,'15.4%',7.1,'已立项','green','林逸舟'],
+  ['数据中心配套能源','其他','投资发展部',45200,-1280,'6.2%',12.4,'已否决','red','李峰'],
+  ['分布式光伏整县推进','新能源 · 光伏','新能源事业部',66700,11240,'14.1%',7.6,'测算中','blue','周敏'],
+];
+const statusTag={blue:'tag blue',orange:'tag orange',green:'tag green',red:'tag red',gray:'tag gray'};
+document.getElementById('projectTbody').innerHTML=projects.map(p=>`
+  <tr>
+    <td><b>${p[0]}</b></td><td><span class="tag cyan">${p[1]}</span></td><td>${p[2]}</td>
+    <td class="num">${p[3].toLocaleString()}</td>
+    <td class="num" style="color:${p[4]<0?'var(--danger)':'inherit'}">${p[4].toLocaleString()}</td>
+    <td class="num">${p[5]}</td><td class="num">${p[6]}</td>
+    <td><span class="${statusTag[p[8]]}">${p[7]}</span></td><td>${p[9]}</td>
+    <td><button class="btn ghost sm" onclick="go('calc')">测算</button><button class="btn ghost sm" onclick="go('report')">报告</button></td>
+  </tr>`).join('');
+
+/* ================= 图表 ================= */
+function mk(id){const el=document.getElementById(id);if(!el)return null;if(charts[id]){charts[id].resize();return charts[id]}const c=echarts.init(el);charts[id]=c;return c}
+const AXIS={axisLine:{lineStyle:{color:'#e2e8f0'}},axisLabel:{color:'#64748b',fontSize:11},splitLine:{lineStyle:{color:'#f1f5f9'}}};
+
+function initPageCharts(key){
+  if(key==='dashboard'){
+    /* 组合气泡图 */
+    mk('chartBubble')&&charts['chartBubble'].setOption({
+      grid:{left:50,right:24,top:30,bottom:40},
+      tooltip:{formatter:p=>`<b>${p.data[3]}</b><br>IRR：${p.data[0]}%<br>NPV：${p.data[1].toLocaleString()} 万元<br>投资：${p.data[2].toLocaleString()} 万元`},
+      xAxis:{name:'IRR %',...AXIS},yAxis:{name:'NPV 万元',...AXIS},
+      series:[{type:'scatter',symbolSize:d=>Math.sqrt(d[2])/3,
+        itemStyle:{color:p=>p.data[1]<0?'#ef4444':p.data[0]>14?'#22c55e':'#3b82f6',opacity:.75},
+        data:[[16.8,14920,58200,'光伏二期'],[14.6,12480,64060,'光伏一期'],[11.2,6340,41800,'储能A'],[13.5,8150,35600,'配网'],[12.9,9850,72400,'物流园'],[15.4,18620,91500,'风电场'],[6.2,-1280,45200,'数据中心'],[14.1,11240,66700,'整县光伏'],[10.8,4320,28900,'水务三期']]}]
+    });
+    mk('chartStage')&&charts['chartStage'].setOption({
+      tooltip:{trigger:'item'},
+      series:[{type:'pie',radius:['45%','70%'],center:['50%','52%'],label:{fontSize:11,color:'#475569'},
+        data:[{value:8,name:'测算中',itemStyle:{color:'#3b82f6'}},{value:5,name:'评审中',itemStyle:{color:'#f59e0b'}},{value:15,name:'已立项',itemStyle:{color:'#22c55e'}},{value:8,name:'已投运',itemStyle:{color:'#94a3b8'}}]}]
+    });
+    mk('chartIndustry')&&charts['chartIndustry'].setOption({
+      grid:{left:70,right:20,top:10,bottom:26},
+      tooltip:{},
+      xAxis:{type:'value',...AXIS},yAxis:{type:'category',data:['其他','交通物流','市政水务','储能与电网','光伏/风电'],...AXIS},
+      series:[{type:'bar',barWidth:14,itemStyle:{color:'#6366f1',borderRadius:[0,4,4,0]},data:[45,72,29,77,320]}]
+    });
+  }
+  if(key==='calc'){initPaneCharts('t-invest');}
+  if(key==='risk'){initPaneCharts('r-sens');}
+  if(key==='compare'){
+    mk('chartPareto')&&charts['chartPareto'].setOption({
+      grid:{left:56,right:30,top:34,bottom:40},
+      tooltip:{formatter:p=>`<b>${p.data[3]||''}</b><br>组合风险(σ)：${p.data[0]}%<br>组合 NPV：${p.data[1].toLocaleString()} 万元`},
+      legend:{data:['可行组合','帕累托前沿'],top:0,textStyle:{fontSize:11}},
+      xAxis:{name:'风险 σ %',...AXIS},yAxis:{name:'组合 NPV 万元',...AXIS},
+      series:[
+        {name:'可行组合',type:'scatter',symbolSize:10,itemStyle:{color:'#94a3b8',opacity:.6},
+          data:[[8.2,15200],[9.5,17800],[10.4,16900],[7.6,13600],[11.2,19500],[12.4,18300],[9.0,16100],[10.8,17600],[13.5,20100],[8.8,14900,''],[12.0,21000],[14.2,22400]]},
+        {name:'帕累托前沿',type:'line',symbolSize:9,lineStyle:{color:'#2563eb',width:2.5},itemStyle:{color:'#2563eb'},
+          data:[[6.4,18420,'组合3'],[7.2,19860,'组合2'],[7.9,23070,'组合1'],[10.5,23800,'组合4']],
+          label:{show:true,formatter:p=>p.data[3],position:'top',fontSize:10,color:'#1d4ed8'}}
+      ]
+    });
+  }
+}
+
+function initPaneCharts(id){
+  if(id==='t-invest'){
+    mk('chartFund')&&charts['chartFund'].setOption({
+      tooltip:{trigger:'axis'},legend:{top:0,textStyle:{fontSize:11}},
+      grid:{left:50,right:16,top:30,bottom:26},
+      xAxis:{type:'category',data:['建设期1','建设期2','运营期初'],...AXIS},
+      yAxis:{type:'value',name:'万元',...AXIS},
+      series:[
+        {name:'自有资金',type:'bar',stack:'a',itemStyle:{color:'#3b82f6'},data:[11210,7848,3363]},
+        {name:'银行贷款',type:'bar',stack:'a',itemStyle:{color:'#22c55e'},data:[19218,13452,5766]},
+        {name:'专项债',type:'bar',stack:'a',itemStyle:{color:'#f59e0b'},data:[1600,1121,482]}
+      ]
+    });
+  }
+  if(id==='t-cost'){
+    mk('chartWaterfall')&&charts['chartWaterfall'].setOption({
+      tooltip:{trigger:'axis',axisPointer:{type:'shadow'}},
+      grid:{left:60,right:20,top:30,bottom:60},
+      xAxis:{type:'category',data:['营业收入','税金及附加','经营成本','折旧摊销','财务费用','利润总额','所得税','净利润'],axisLabel:{...AXIS.axisLabel,interval:0,rotate:20},axisLine:AXIS.axisLine},
+      yAxis:{type:'value',name:'万元',...AXIS},
+      series:[
+        {type:'bar',stack:'w',itemStyle:{color:'transparent'},data:[0,36400,24400,21380,20054,0,6910,0]},
+        {type:'bar',stack:'w',label:{show:true,position:'top',fontSize:10,color:'#475569'},
+          data:[
+            {value:38500,itemStyle:{color:'#3b82f6'}},
+            {value:2100,itemStyle:{color:'#ef4444'}},
+            {value:12000,itemStyle:{color:'#ef4444'}},
+            {value:3020,itemStyle:{color:'#ef4444'}},
+            {value:1326,itemStyle:{color:'#ef4444'}},
+            {value:9214,itemStyle:{color:'#8b5cf6'}},
+            {value:2304,itemStyle:{color:'#ef4444'}},
+            {value:6910,itemStyle:{color:'#22c55e'}}
+          ]}
+      ]
+    });
+  }
+  if(id==='t-indicator'){
+    mk('chartIndicator')&&charts['chartIndicator'].setOption({
+      tooltip:{},legend:{top:0,textStyle:{fontSize:11}},
+      grid:{left:56,right:20,top:34,bottom:26},
+      xAxis:{type:'category',data:['2026','2027','2028','2029','2030','2031','2032','2033','2034','2035'],...AXIS},
+      yAxis:{type:'value',name:'万元',...AXIS},
+      series:[
+        {name:'净现金流',type:'bar',itemStyle:{color:p=>p.value<0?'#ef4444':'#22c55e',borderRadius:[3,3,0,0]},data:[-26400,-29660,5900,9050,9050,9050,9050,9050,9050,9050]},
+        {name:'累计净现金流',type:'line',smooth:true,lineStyle:{color:'#2563eb',width:2.5},itemStyle:{color:'#2563eb'},data:[-26400,-56060,-50160,-41110,-32060,-23010,-13960,-4910,4140,13190]}
+      ]
+    });
+  }
+  if(id==='t-cashflow'){
+    mk('chartCashflow')&&charts['chartCashflow'].setOption({
+      tooltip:{},legend:{top:0,textStyle:{fontSize:11}},
+      grid:{left:56,right:16,top:34,bottom:26},
+      xAxis:{type:'category',data:['2026','2027','2028','2029','2030','2031','2032','2033'],...AXIS},
+      yAxis:{type:'value',...AXIS},
+      series:[
+        {name:'现金流入',type:'bar',itemStyle:{color:'#3b82f6',borderRadius:[3,3,0,0]},data:[0,0,30800,38500,38500,38500,38500,38500]},
+        {name:'现金流出',type:'bar',itemStyle:{color:'#f59e0b',borderRadius:[3,3,0,0]},data:[26400,29660,24900,29450,29450,29450,29450,29450]},
+        {name:'净现金流',type:'line',smooth:true,lineStyle:{color:'#22c55e',width:2.5},itemStyle:{color:'#22c55e'},data:[-26400,-29660,5900,9050,9050,9050,9050,9050]}
+      ]
+    });
+  }
+  if(id==='t-reverse'){
+    mk('chartReverse')&&charts['chartReverse'].setOption({
+      tooltip:{trigger:'axis'},
+      grid:{left:46,right:44,top:30,bottom:26},
+      xAxis:{type:'category',name:'售价 元/kWh',data:[0.52,0.54,0.56,0.58,0.60,0.62,0.65],...AXIS},
+      yAxis:[{type:'value',name:'IRR %',...AXIS},{type:'value',show:false,min:0,max:20}],
+      series:[
+        {name:'IRR 曲线',type:'line',smooth:true,lineStyle:{color:'#2563eb',width:2.5},itemStyle:{color:'#2563eb'},data:[8.9,10.8,12.7,14.6,16.5,18.3,20.9],
+          markLine:{silent:true,symbol:'none',lineStyle:{color:'#ef4444',type:'dashed'},data:[{yAxis:15,label:{formatter:'目标 IRR 15%',fontSize:10}},{xAxis:'0.58'}]},
+          markPoint:{data:[{coord:['0.58',14.6],value:'基准',itemStyle:{color:'#22c55e'},label:{fontSize:10}}]}}
+      ]
+    });
+  }
+  if(id==='r-sens'){
+    /* 热力图：售价(-20~+20) × 成本(-20~+20) → NPV */
+    const steps=['-20%','-15%','-10%','-5%','0','+5%','+10%','+15%','+20%'];
+    const base=12480,data=[];
+    for(let i=0;i<9;i++)for(let j=0;j<9;j++){
+      const price=1+(i-4)*0.05, cost=1+(j-4)*0.05;
+      const npv=Math.round(base*price - 8600*(cost-1) - (price-1)*0);
+      data.push([j,i,Math.round(base*price - 8600*(cost-1))]);
+    }
+    mk('chartHeatmap')&&charts['chartHeatmap'].setOption({
+      tooltip:{formatter:p=>`售价 ${steps[p.data[1]]} × 成本 ${steps[p.data[0]]}<br>NPV：<b>${p.data[2].toLocaleString()} 万元</b>`},
+      grid:{left:70,right:20,top:30,bottom:70},
+      xAxis:{type:'category',name:'单位成本波动',data:steps,...AXIS},
+      yAxis:{type:'category',name:'售价波动',data:steps,...AXIS},
+      visualMap:{min:-8000,max:26000,calculable:true,orient:'horizontal',left:'center',bottom:0,textStyle:{fontSize:10},inRange:{color:['#dc2626','#fbbf24','#f8fafc','#86efac','#16a34a']}},
+      series:[{type:'heatmap',data:data,label:{show:true,fontSize:9,formatter:p=>(p.data[2]/10000).toFixed(1)+'亿'.replace('亿',''),color:'#0f172a'},itemStyle:{borderColor:'#fff',borderWidth:1}}]
+    });
+    mk('chartTornado')&&charts['chartTornado'].setOption({
+      title:{text:'龙卷风图 · 敏感系数排序',textStyle:{fontSize:12,color:'#334155'},left:'center',top:0},
+      tooltip:{},grid:{left:80,right:40,top:30,bottom:24},
+      xAxis:{type:'value',...AXIS},yAxis:{type:'category',data:['建设工期','建设投资','单位成本','产品售价'],...AXIS},
+      series:[
+        {type:'bar',stack:'t',itemStyle:{color:'#ef4444'},barWidth:12,data:[0.2,0,0,0],label:{show:true,position:'left',fontSize:9}},
+        {type:'bar',stack:'t',itemStyle:{color:'#3b82f6'},barWidth:12,data:[0.24,1.18,2.65,4.82],label:{show:true,position:'right',fontSize:9}}
+      ]
+    });
+  }
+  if(id==='r-bep'){
+    const x=[];for(let q=0;q<=10;q+=1)x.push(q);
+    mk('chartBEP')&&charts['chartBEP'].setOption({
+      tooltip:{trigger:'axis'},legend:{top:0,textStyle:{fontSize:11}},
+      grid:{left:56,right:20,top:34,bottom:30},
+      xAxis:{type:'value',name:'产量（万kWh）',max:10,...AXIS},
+      yAxis:{type:'value',name:'万元',...AXIS},
+      series:[
+        {name:'销售收入',type:'line',symbol:'none',lineStyle:{color:'#2563eb',width:2.5},data:x.map(q=>[q,+(q*0.58*10000/10).toFixed(0)])},
+        {name:'总成本（固定+可变）',type:'line',symbol:'none',lineStyle:{color:'#ef4444',width:2.5},data:x.map(q=>[q,+(3610+q*0.262*10000/10).toFixed(0)])},
+        {name:'固定成本',type:'line',symbol:'none',lineStyle:{color:'#94a3b8',type:'dashed'},data:x.map(q=>[q,3610]),
+          markLine:{silent:true,symbol:'none',lineStyle:{color:'#22c55e',type:'dashed',width:2},data:[{xAxis:6.24,label:{formatter:'BEP 6.24 万kWh（62.4%）',fontSize:10}}]}}
+      ]
+    });
+  }
+  if(id==='r-mc'){
+    const bins=[],counts=[];
+    for(let i=0;i<30;i++){const v=-8000+i*1200;bins.push(v);const x=(v-12000)/6500;counts.push(Math.round(430*Math.exp(-x*x/2)+Math.random()*20));}
+    mk('chartMCHist')&&charts['chartMCHist'].setOption({
+      title:{text:'NPV 概率分布直方图（10,000 次）',textStyle:{fontSize:12,color:'#334155'},left:'center',top:0},
+      tooltip:{},grid:{left:60,right:16,top:40,bottom:30},
+      xAxis:{type:'category',data:bins.map(v=>(v/10000).toFixed(1)+'亿'),axisLabel:{...AXIS.axisLabel,interval:4},axisLine:AXIS.axisLine},
+      yAxis:{type:'value',name:'频次',...AXIS},
+      series:[{type:'bar',barWidth:'80%',itemStyle:{color:p=>bins[p.dataIndex]<0?'#ef4444':'#3b82f6',borderRadius:[3,3,0,0]},data:counts,
+        markLine:{silent:true,symbol:'none',lineStyle:{color:'#0f172a'},data:[{xAxis:bins.findIndex(v=>v>=0),label:{formatter:'NPV=0',fontSize:10}}]}}]
+    });
+    const cum=[];let acc=0;const total=counts.reduce((a,b)=>a+b,0);
+    bins.forEach((v,i)=>{acc+=counts[i];cum.push([(v/10000).toFixed(1),+(acc/total*100).toFixed(1)]);});
+    mk('chartMCCurve')&&charts['chartMCCurve'].setOption({
+      title:{text:'累计概率曲线',textStyle:{fontSize:12,color:'#334155'},left:'center',top:0},
+      tooltip:{formatter:p=>`NPV ≤ ${p.data[0]}亿 的概率：${p.data[1]}%`},
+      grid:{left:50,right:16,top:40,bottom:30},
+      xAxis:{type:'value',name:'NPV（亿元）',...AXIS},yAxis:{type:'value',name:'%',max:100,...AXIS},
+      series:[{type:'line',symbol:'none',smooth:true,lineStyle:{color:'#8b5cf6',width:2.5},itemStyle:{color:'#8b5cf6'},data:cum,
+        markLine:{silent:true,symbol:'none',lineStyle:{color:'#ef4444',type:'dashed'},data:[{yAxis:13.7,label:{formatter:'亏损概率 13.7%',fontSize:10}}]}}]
+    });
+  }
+}
+
+/* 初始化 */
+window.addEventListener('resize',()=>Object.values(charts).forEach(c=>c&&c.resize&&c.resize()));
+initPageCharts('dashboard');
+</script>
+</body>
+</html>

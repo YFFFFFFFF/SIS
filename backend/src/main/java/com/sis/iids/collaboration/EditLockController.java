@@ -2,6 +2,7 @@ package com.sis.iids.collaboration;
 
 import com.sis.iids.common.api.ApiResponse;
 import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,12 +21,14 @@ public class EditLockController {
     }
 
     @PostMapping("/scenarios/{scenarioId}/lock")
+    @PreAuthorize("hasAnyRole('ANALYST','INVESTMENT_ANALYST','FINANCE_SPECIALIST','TECHNICAL_ENGINEER','PROJECT_MANAGER','ADMIN','SYSTEM_ADMINISTRATOR')")
     public ApiResponse<EditLockResponse> acquire(@PathVariable Long scenarioId,
                                                  @Valid @RequestBody AcquireLockRequest request) {
         return ApiResponse.ok(editLockService.acquire(scenarioId, request));
     }
 
     @DeleteMapping("/scenarios/{scenarioId}/lock")
+    @PreAuthorize("hasAnyRole('ANALYST','INVESTMENT_ANALYST','FINANCE_SPECIALIST','TECHNICAL_ENGINEER','PROJECT_MANAGER','ADMIN','SYSTEM_ADMINISTRATOR')")
     public ApiResponse<ReleaseLockResponse> release(@PathVariable Long scenarioId,
                                                     @Valid @RequestBody ReleaseLockRequest request) {
         return ApiResponse.ok(editLockService.release(scenarioId, request));

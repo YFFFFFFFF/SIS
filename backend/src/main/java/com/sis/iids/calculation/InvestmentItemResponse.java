@@ -2,8 +2,10 @@ package com.sis.iids.calculation;
 
 import java.math.BigDecimal;
 
-public record InvestmentItemResponse(Long id, Long scenarioId, String category, String name, BigDecimal amount, Integer yearNo) {
+public record InvestmentItemResponse(Long id, Long scenarioId, String category, String name, BigDecimal amount,
+                                     Integer yearNo, String itemCode, Long parentId, Integer sortOrder) {
     static InvestmentItemResponse from(InvestmentItem item) {
-        return new InvestmentItemResponse(item.getId(), item.getScenarioId(), item.getCategory(), item.getName(), item.getAmount(), item.getYearNo());
+        return new InvestmentItemResponse(item.getId(), item.getScenarioId(), item.getCategory(), item.getName(),
+                item.getAmount(), item.getYearNo(), item.getItemCode(), item.getParentId(), item.getSortOrder());
     }
 }

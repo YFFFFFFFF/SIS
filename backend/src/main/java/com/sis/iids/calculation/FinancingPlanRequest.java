@@ -13,6 +13,8 @@ public record FinancingPlanRequest(
         @NotNull @DecimalMin("0.0") BigDecimal ratio,
         @NotNull @DecimalMin("0.0") BigDecimal amount,
         @NotNull @DecimalMin("0.0") BigDecimal interestRate,
-        @NotNull @Min(0) Integer termYears
+        @NotNull @Min(0) Integer termYears,
+        @Size(max = 32) String repaymentMethod,
+        @Min(0) Integer graceYears
 ) {
 }

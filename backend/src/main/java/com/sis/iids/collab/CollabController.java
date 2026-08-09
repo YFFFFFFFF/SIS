@@ -1,0 +1,116 @@
+package com.sis.iids.collab;
+
+import com.sis.iids.common.api.ApiResponse;
+import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+import java.util.List;
+
+/**
+ * R-15 协同编辑接口（FR-04-02）。
+ */
+@RestController
+@RequestMapping("/api/v1")
+public class CollabController {
+
+    private final CollabService collabService;
+    private final FieldLockService fieldLockService;
+    private final CollabFieldCatalogService fieldCatalogService;
+
+    public CollabController(CollabService collabService,
+                            FieldLockService fieldLockService,
+                            CollabFieldCatalogService fieldCatalogService) {
+        this.collabService = collabService;
+        this.fieldLockService = fieldLockService;
+        this.fieldCatalogService = fieldCatalogService;
+    }
+
+    /** SSE 订阅（D2 选型 A）：评论/变更/在线状态即时推送。 */
+    @GetMapping("/scenarios/{scenarioId}/collab/stream")
+    public SseEmitter stream(@PathVariable Long scenarioId) {
+        return collabService.subscribe(scenarioId);
+    }
+
+    @GetMapping("/scenarios/{scenarioId}/comments")
+    public ApiResponse<List<CommentResponse>> listComments(@PathVariable Long scenarioId) {
+        return ApiResponse.ok(collabService.listComments(scenarioId));
+    }
+
+    @PostMapping("/scenarios/{scenarioId}/comments")
+    @PreAuthorize("hasAnyRole('ANALYST','INVESTMENT_ANALYST','FINANCE_SPECIALIST','TECHNICAL_ENGINEER','PROJECT_MANAGER','ADMIN','SYSTEM_ADMINISTRATOR')")
+    public ApiResponse<CommentResponse> addComment(@PathVariable Long scenarioId,
+                                                   @Valid @RequestBody CommentRequest request) {
+        return ApiResponse.ok(collabService.addComment(scenarioId, request, null, currentUsername()));
+    }
+
+    @GetMapping("/scenarios/{scenarioId}/changes")
+    public ApiResponse<List<ChangeResponse>> listChanges(@PathVariable Long scenarioId) {
+        return ApiResponse.ok(collabService.listChanges(scenarioId));
+    }
+
+    @PostMapping("/scenarios/{scenarioId}/presence")
+    public ApiResponse<List<PresenceResponse>> heartbeat(@PathVariable Long scenarioId,
+                                                         @Valid @RequestBody PresenceRequest request) {
+        return ApiResponse.ok(collabService.heartbeat(scenarioId, request));
+    }
+
+    @GetMapping("/scenarios/{scenarioId}/presence")
+    public ApiResponse<List<PresenceResponse>> listPresence(@PathVariable Long scenarioId) {
+        return ApiResponse.ok(collabService.listPresence(scenarioId));
+    }
+
+    // ============================================================
+    // R-15 收尾：字段级锁定与协同数据目录（FR-04-02）
+    // ============================================================
+
+    /** 协同数据表：参数/投资/成本/融资字段 + 责任部门 + 当前值 + 锁状态 + 最后编辑。 */
+    @GetMapping("/scenarios/{scenarioId}/collab/fields")
+    public ApiResponse<List<CollabFieldItem>> fieldCatalog(@PathVariable Long scenarioId) {
+        return ApiResponse.ok(fieldCatalogService.catalog(scenarioId));
+    }
+
+    @GetMapping("/scenarios/{scenarioId}/field-locks")
+    public ApiResponse<List<FieldLockResponse>> listFieldLocks(@PathVariable Long scenarioId) {
+        return ApiResponse.ok(fieldLockService.list(scenarioId));
+    }
+
+    /** 获取/续期字段锁：他人持有未过期 → 409 冲突提示。 */
+    @PostMapping("/scenarios/{scenarioId}/field-locks")
+    @PreAuthorize("hasAnyRole('ANALYST','INVESTMENT_ANALYST','FINANCE_SPECIALIST','TECHNICAL_ENGINEER','PROJECT_MANAGER','ADMIN','SYSTEM_ADMINISTRATOR')")
+    public ApiResponse<FieldLockResponse> acquireFieldLock(@PathVariable Long scenarioId,
+                                                           @Valid @RequestBody FieldLockAcquireRequest request) {
+        return ApiResponse.ok(fieldLockService.acquire(scenarioId, request));
+    }
+
+    /** 释放字段锁：仅持有人本人。 */
+    @PostMapping("/scenarios/{scenarioId}/field-locks/release")
+    @PreAuthorize("hasAnyRole('ANALYST','INVESTMENT_ANALYST','FINANCE_SPECIALIST','TECHNICAL_ENGINEER','PROJECT_MANAGER','ADMIN','SYSTEM_ADMINISTRATOR')")
+    public ApiResponse<java.util.Map<String, Object>> releaseFieldLock(@PathVariable Long scenarioId,
+                                                                       @Valid @RequestBody FieldLockReleaseRequest request) {
+        fieldLockService.release(scenarioId, request);
+        return ApiResponse.ok(java.util.Map.of("released", true, "fieldKey", request.fieldKey()));
+    }
+
+    /** 管理员强制释放（冲突合并人工兜底）；fieldKey 含 . / : 故走查询参数。 */
+    @PostMapping("/scenarios/{scenarioId}/field-locks/force-release")
+    @PreAuthorize("hasAnyRole('ADMIN','SYSTEM_ADMINISTRATOR')")
+    public ApiResponse<java.util.Map<String, Object>> forceReleaseFieldLock(@PathVariable Long scenarioId,
+                                                                            @RequestParam String fieldKey) {
+        fieldLockService.forceRelease(scenarioId, fieldKey, currentUsername());
+        return ApiResponse.ok(java.util.Map.of("released", true, "fieldKey", fieldKey));
+    }
+
+    private String currentUsername() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth == null ? "anonymous" : auth.getName();
+    }
+}

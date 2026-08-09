@@ -1,6 +1,7 @@
 package com.sis.iids.approval;
 
 import com.sis.iids.audit.AuditService;
+import com.sis.iids.bpm.ApprovalFlowDefRepository;
 import com.sis.iids.common.error.BusinessException;
 import com.sis.iids.common.error.ErrorCode;
 import com.sis.iids.scenario.ScenarioRepository;
@@ -20,32 +21,38 @@ public class ApprovalService {
     private final ApprovalInstanceRepository approvalInstanceRepository;
     private final ApprovalRecordRepository approvalRecordRepository;
     private final AuditService auditService;
+    private final ApprovalFlowDefRepository approvalFlowDefRepository;
 
     public ApprovalService(ScenarioRepository scenarioRepository,
                            ApprovalInstanceRepository approvalInstanceRepository,
                            ApprovalRecordRepository approvalRecordRepository,
-                           AuditService auditService) {
+                           AuditService auditService,
+                           ApprovalFlowDefRepository approvalFlowDefRepository) {
         this.scenarioRepository = scenarioRepository;
         this.approvalInstanceRepository = approvalInstanceRepository;
         this.approvalRecordRepository = approvalRecordRepository;
         this.auditService = auditService;
+        this.approvalFlowDefRepository = approvalFlowDefRepository;
     }
 
     @Transactional
     public ApprovalInstanceResponse submit(Long scenarioId, ApprovalActionRequest request) {
         if (!scenarioRepository.existsById(scenarioId)) {
-            throw new BusinessException(ErrorCode.NOT_FOUND, "Scenario not found");
+            throw new BusinessException(ErrorCode.NOT_FOUND, "测算方案不存在");
         }
         approvalInstanceRepository.findFirstByScenarioIdOrderByCreatedAtDesc(scenarioId)
                 .filter(this::active)
                 .ifPresent(instance -> {
-                    throw new BusinessException(ErrorCode.CONFLICT, "Scenario already has an active approval instance");
+                    throw new BusinessException(ErrorCode.CONFLICT, "该测算方案已有进行中的审批流程");
                 });
 
         ApprovalInstance instance = new ApprovalInstance();
         instance.setScenarioId(scenarioId);
         instance.setStatus(ApprovalStatus.IN_REVIEW);
         instance.setCurrentNode(NODE_REVIEW);
+        // R-14：绑定默认审批流模板（M1 固定三段链迁移入库）
+        approvalFlowDefRepository.findFirstByIsDefaultTrueAndEnabledTrue()
+                .ifPresent(flow -> instance.setFlowDefId(flow.getId()));
         ApprovalInstance saved = approvalInstanceRepository.save(instance);
         record(saved.getId(), NODE_SUBMIT, ApprovalDecision.SUBMIT, comment(request));
         auditService.record("APPROVAL_SUBMITTED", "APPROVAL_INSTANCE", saved.getId().toString(), null,
@@ -81,7 +88,7 @@ public class ApprovalService {
     public ApprovalInstanceResponse reject(Long instanceId, ApprovalActionRequest request) {
         ApprovalInstance instance = findInstance(instanceId);
         if (instance.getStatus() == ApprovalStatus.APPROVED || instance.getStatus() == ApprovalStatus.REJECTED) {
-            throw new BusinessException(ErrorCode.CONFLICT, "Terminal approval instance cannot be rejected");
+            throw new BusinessException(ErrorCode.CONFLICT, "已结束的审批流程不能再驳回");
         }
         String node = instance.getCurrentNode();
         instance.setStatus(ApprovalStatus.REJECTED);
@@ -94,12 +101,12 @@ public class ApprovalService {
 
     private ApprovalInstance findInstance(Long instanceId) {
         return approvalInstanceRepository.findById(instanceId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Approval instance not found"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "审批流程不存在"));
     }
 
     private void requireState(ApprovalInstance instance, ApprovalStatus status, String node) {
         if (instance.getStatus() != status || !node.equals(instance.getCurrentNode())) {
-            throw new BusinessException(ErrorCode.CONFLICT, "Approval instance is not at required node");
+            throw new BusinessException(ErrorCode.CONFLICT, "审批流程当前节点不允许执行该操作");
         }
     }
 

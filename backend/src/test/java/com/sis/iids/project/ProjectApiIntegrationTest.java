@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +19,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc(addFilters = false)
+@WithMockUser(roles = {"ADMIN", "INVESTMENT_ANALYST", "FINANCE_SPECIALIST", "TECHNICAL_ENGINEER", "PROJECT_MANAGER", "SYSTEM_ADMINISTRATOR"})
 @Transactional
 class ProjectApiIntegrationTest {
 
@@ -80,6 +82,13 @@ class ProjectApiIntegrationTest {
                 .andExpect(jsonPath("$.data[1].action").value("PROJECT_UPDATED"));
     }
 
+    @Test
+    void missingProjectReturnsChineseMessage() throws Exception {
+        mockMvc.perform(get("/api/v1/projects/{id}", 999999))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"))
+                .andExpect(jsonPath("$.message").value("项目不存在"));
+    }
     private String createProject(String code, String name) throws Exception {
         String request = """
                 {

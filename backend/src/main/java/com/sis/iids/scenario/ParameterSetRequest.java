@@ -18,6 +18,12 @@ public record ParameterSetRequest(
         @NotNull @DecimalMin("0.0") BigDecimal unitCost,
         @NotNull @DecimalMin("0.0") BigDecimal annualOutput,
         @NotNull @DecimalMin("0.0") BigDecimal fixedOperatingCost,
-        @Size(max = 64) String formulaVersion
+        @Size(max = 64) String formulaVersion,
+        @Size(max = 32) String depreciationPolicy,
+        @Min(0) Integer amortizationYears,
+        @DecimalMin("0.0") BigDecimal amortizableAmount,
+        @Size(max = 32) String repaymentMethod,
+        String taxSchedule,
+        String rampUp
 ) {
 }

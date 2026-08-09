@@ -1,6 +1,7 @@
 package com.sis.iids.importx;
 
 import com.sis.iids.common.api.ApiResponse;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,6 +21,7 @@ public class ExcelImportController {
     }
 
     @PostMapping("/scenarios/{scenarioId}/import/excel")
+    @PreAuthorize("hasAnyRole('ANALYST','INVESTMENT_ANALYST','FINANCE_SPECIALIST','TECHNICAL_ENGINEER','ADMIN','SYSTEM_ADMINISTRATOR')")
     public ApiResponse<ImportJobResponse> importExcel(@PathVariable Long scenarioId,
                                                        @RequestParam("file") MultipartFile file) {
         return ApiResponse.ok(excelImportService.importExcel(scenarioId, file));

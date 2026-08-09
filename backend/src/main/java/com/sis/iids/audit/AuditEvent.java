@@ -45,6 +45,14 @@ public class AuditEvent {
     @Column(name = "trace_id", length = 64)
     private String traceId;
 
+    /** R-08 链式哈希：上一条事件的 hash（首条为 GENESIS） */
+    @Column(name = "prev_hash", length = 64)
+    private String prevHash;
+
+    /** R-08 本事件内容 SHA-256（含 prevHash，篡改任一历史事件都会导致链校验失败） */
+    @Column(name = "hash", length = 64)
+    private String hash;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -71,6 +79,10 @@ public class AuditEvent {
     public void setAfterValue(String afterValue) { this.afterValue = afterValue; }
     public String getTraceId() { return traceId; }
     public void setTraceId(String traceId) { this.traceId = traceId; }
+    public String getPrevHash() { return prevHash; }
+    public void setPrevHash(String prevHash) { this.prevHash = prevHash; }
+    public String getHash() { return hash; }
+    public void setHash(String hash) { this.hash = hash; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

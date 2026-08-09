@@ -63,26 +63,44 @@ E:\SIS
 | `project` | 项目管理 |
 | `scenario` | 测算方案和参数集 |
 | `calculation` | 投资项、融资方案、测算任务、结果 |
-| `engine.financial` | 财务测算核心引擎 |
+| `engine.financial` | 财务测算核心引擎（纯 POJO，红线 R1） |
+| `engine.sensitivity` | 敏感性分析引擎（网格重算/敏感系数/临界值） |
+| `engine.reverse` | 目标反算引擎（二分迭代 [0.01,10]） |
+| `engine.breakeven` | 盈亏平衡引擎（三口径 + 曲线） |
+| `engine.montecarlo` | 蒙特卡洛引擎（三角/正态采样，种子可复现） |
+| `engine.portfolio` | 组合优化引擎（oj! MIP 0-1 规划） |
+| `engine.ai` | AI 打分引擎（六因子加权，可解释） |
+| `sensitivity` / `reverse` / `breakeven` / `montecarlo` | 对应 Service/Controller/持久化编排 |
+| `comparison` | 多方案横向对比聚合（只读） |
+| `portfolio` | 组合优化任务编排（候选池聚合 + 落库） |
+| `dashboard` | BI 看板聚合（只读） |
+| `risk` | 风险阈值规则与预警事件（FR-02-04） |
+| `bpm` | 审批流定义与流程追踪时间线（FR-04-03） |
+| `collab` | 评论/变更时间线/在线状态/SSE 推送（FR-04-02） |
+| `collaboration` | 场景编辑锁（M1 沿用） |
+| `library` | 项目库检索/标签/复盘（FR-03-03） |
+| `ai` | AI 运营数据/参数推荐/打分编排（FR-05） |
 | `worker` | 异步测算任务轮询执行 |
 | `importx` | Excel 导入 |
-| `report` | Excel 报告生成与下载 |
-| `approval` | 固定审批链 |
-| `collaboration` | 场景编辑锁 |
-| `audit` | 审计事件 |
+| `report` | Excel（7 sheet）/PDF 报告生成与下载 |
+| `approval` | 审批链执行（实例绑定 flow_def_id） |
+| `audit` | 审计事件 + SHA-256 哈希链（R-08） |
 | `common` | API 响应和异常处理 |
 
 前端主要文件：
 
 | 文件 | 职责 |
 | --- | --- |
-| `src/router/index.ts` | 登录页和工作台路由 |
+| `src/router/index.ts` | 12 条懒加载路由（含 /dashboard、/library） |
 | `src/stores/auth.ts` | 登录态和 token 存储 |
+| `src/stores/workbench.ts` | 跨页共享工作台状态（Pinia） |
 | `src/shared/api/http.ts` | Axios 实例、Bearer token、统一错误处理 |
-| `src/views/LoginView.vue` | 登录页 |
-| `src/views/WorkbenchHome.vue` | M1 业务工作台 |
-| `src/components/MetricChart.vue` | 测算指标图表 |
-| `src/layouts/WorkbenchLayout.vue` | 工作台布局 |
+| `src/shared/types/domain.ts` | 领域类型（含 R-04~R-17 新增视图模型） |
+| `src/shared/i18n/display.ts` | 枚举中文映射 |
+| `src/views/*.vue` | 12 个业务页面（看板/项目/方案/输入/测算/风险/比选/项目库/报告/治理/审计） |
+| `src/components/` | 业务面板（Sensitivity/Reverse/BreakEven/MonteCarlo/RiskAlert/Portfolio/Bpm/Collab/Ai/Comparison） |
+| `src/components/charts/` | 图表组件收拢点 |
+| `src/layouts/WorkbenchLayout.vue` | 工作台布局（路由驱动菜单） |
 
 ## 3. 配置说明
 
@@ -143,30 +161,35 @@ http://backend:8080/api/
 
 ## 4. 数据库
 
-迁移文件：
+迁移文件（只增不改，共 14 个）：
 
-- `V1__init_schema.sql`
-- `V2__auth_seed.sql`
+- `V1__init_schema.sql` / `V2__auth_seed.sql` / `V3__prd_roles_seed.sql`
+- `V4__financial_engine_upgrade.sql`（R-01 投资树/成本分项/参数集扩展）
+- `V5__sensitivity_analysis.sql`（R-04）
+- `V6__audit_hash_chain.sql`（R-08 审计链）
+- `V7__reverse_run.sql`（R-09）
+- `V8__monte_carlo_run.sql`（R-11，种子入库）
+- `V9__risk_rule_alert.sql`（R-12 + 3 条种子规则）
+- `V10__portfolio_run.sql`（R-13）
+- `V11__approval_flow_def.sql`（R-14 + 默认三段链模板）
+- `V12__collaboration.sql`（R-15 评论/变更/在线）
+- `V13__project_library.sql`（R-16 标签/复盘）
+- `V14__ai_engine.sql`（R-17 运营记录/模型版本 + SCORING_V1 种子）
 
 主要数据表：
 
-- `sys_user`
-- `sys_role`
-- `sys_user_role`
-- `project`
-- `scenario`
-- `parameter_set`
-- `investment_item`
-- `financing_plan`
-- `calculation_task`
-- `cash_flow_row`
-- `calculation_result`
-- `report_document`
-- `approval_instance`
-- `approval_record`
-- `edit_lock`
-- `audit_event`
-- `import_job`
+- `sys_user` / `sys_role` / `sys_user_role`
+- `project` / `project_tag` / `project_review`
+- `scenario` / `parameter_set`
+- `investment_item` / `cost_item` / `financing_plan`
+- `calculation_task` / `cash_flow_row` / `calculation_result`
+- `sensitivity_run` / `sensitivity_cell` / `reverse_run` / `monte_carlo_run`
+- `risk_rule` / `risk_alert_event`
+- `portfolio_run` / `portfolio_member`
+- `approval_flow_def` / `approval_node_def` / `approval_instance`（含 flow_def_id） / `approval_record`
+- `scenario_comment` / `scenario_change` / `scenario_presence`
+- `ai_operation_record` / `ai_model_version`
+- `report_document` / `edit_lock` / `audit_event`（含 prev_hash/hash） / `import_job`
 
 种子账号：
 
@@ -319,23 +342,26 @@ docker compose up --build
 
 ## 8. 已知限制
 
-- M1 未实现企业级多租户、权限配置后台、复杂审批流设计器。
-- M1 未实现自动 Workflow Runtime、MCP 集成、多 Agent 自治。
-- 前端工作台为 M1 操作入口，尚未拆分复杂页面。
+- 未实现企业级多租户、权限配置后台、复杂审批流设计器（BPM 流程定义已入库可配置，但节点条件规则 `condition_expr` 为预留字段，实例推进仍走固定链）。
+- 未实现自动 Workflow Runtime、MCP 集成、多 Agent 自治。
 - 前端未提供项目、方案、投资项、融资方案删除入口。
 - 前端未提供完整 Excel 模板下载和导入结果明细展示。
 - 前端未对审批状态和编辑锁做全局编辑禁用。
 - 暂无生产级日志、监控、备份和恢复方案。
-- `npm install` 当前报告 5 个安全审计项，未执行 `npm audit fix --force`，因为可能引入破坏性依赖升级。
+- 协同编辑为方案级编辑锁 + 评论/变更/在线推送，未做字段级锁定与冲突合并（R-15 XL 完整范围收敛）。
+- AI 打分为规则化加权模型（可解释优先），未接入机器学习训练管线。
+- PDF 报告为英文标签摘要（CJK 字体规避），完整中文报告用 Excel 版。
+- 性能对标测试以宽松阈值锁定量级（测算 100ms / 蒙特卡洛 1 万次 2.3s / 看板 17ms 实测）；PostgreSQL 集成测试、Docker 实跑、Playwright E2E 因本机无 Docker 未执行，docker-compose.yml 已就绪待补跑。
+- `npm audit` 已清零（brace-expansion 修复 + echarts 升级 6.1.0）。
 
 ## 9. 下一阶段建议
 
 优先级建议：
 
-1. 保持 OpenAPI 契约测试随核心接口同步更新。
-2. 前端拆分工作台页面并补 E2E 测试。
+1. 在有 Docker 的环境补跑 PostgreSQL 集成测试与 Playwright E2E（登录→建项目→建方案→测算→报告下载）。
+2. 保持 OpenAPI 契约测试随核心接口同步更新。
 3. 完善 Excel 模板下载、导入预览、错误行展示。
-4. 增强审批状态和编辑锁对编辑操作的约束。
-5. 增加 PostgreSQL 集成测试环境。
+4. 增强审批状态和编辑锁对编辑操作的约束（字段级锁）。
+5. BPM 节点条件规则（condition_expr）求值落地（如“参数调整 >±5% 升级投委会”）。
 6. 引入日志追踪、操作审计筛选和导出。
-7. 优化前端 chunk 体积。
+7. AI 引擎接入真实训练数据后的模型迭代（当前 SCORING_V1 为规则化基线）。

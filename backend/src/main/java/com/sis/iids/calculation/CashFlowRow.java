@@ -26,6 +26,20 @@ public class CashFlowRow {
     private BigDecimal discountedCashFlow;
     @Column(name = "cumulative_cf", nullable = false, precision = 18, scale = 4)
     private BigDecimal cumulativeCashFlow;
+    @Column(nullable = false, precision = 18, scale = 4)
+    private BigDecimal revenue = BigDecimal.ZERO;
+    @Column(name = "operating_cost", nullable = false, precision = 18, scale = 4)
+    private BigDecimal operatingCost = BigDecimal.ZERO;
+    @Column(nullable = false, precision = 18, scale = 4)
+    private BigDecimal depreciation = BigDecimal.ZERO;
+    @Column(nullable = false, precision = 18, scale = 4)
+    private BigDecimal amortization = BigDecimal.ZERO;
+    @Column(nullable = false, precision = 18, scale = 4)
+    private BigDecimal interest = BigDecimal.ZERO;
+    @Column(nullable = false, precision = 18, scale = 4)
+    private BigDecimal tax = BigDecimal.ZERO;
+    @Column(name = "net_profit", nullable = false, precision = 18, scale = 4)
+    private BigDecimal netProfit = BigDecimal.ZERO;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -47,4 +61,18 @@ public class CashFlowRow {
     public void setDiscountedCashFlow(BigDecimal discountedCashFlow) { this.discountedCashFlow = discountedCashFlow; }
     public BigDecimal getCumulativeCashFlow() { return cumulativeCashFlow; }
     public void setCumulativeCashFlow(BigDecimal cumulativeCashFlow) { this.cumulativeCashFlow = cumulativeCashFlow; }
+    public BigDecimal getRevenue() { return revenue; }
+    public void setRevenue(BigDecimal revenue) { this.revenue = revenue; }
+    public BigDecimal getOperatingCost() { return operatingCost; }
+    public void setOperatingCost(BigDecimal operatingCost) { this.operatingCost = operatingCost; }
+    public BigDecimal getDepreciation() { return depreciation; }
+    public void setDepreciation(BigDecimal depreciation) { this.depreciation = depreciation; }
+    public BigDecimal getAmortization() { return amortization; }
+    public void setAmortization(BigDecimal amortization) { this.amortization = amortization; }
+    public BigDecimal getInterest() { return interest; }
+    public void setInterest(BigDecimal interest) { this.interest = interest; }
+    public BigDecimal getTax() { return tax; }
+    public void setTax(BigDecimal tax) { this.tax = tax; }
+    public BigDecimal getNetProfit() { return netProfit; }
+    public void setNetProfit(BigDecimal netProfit) { this.netProfit = netProfit; }
 }

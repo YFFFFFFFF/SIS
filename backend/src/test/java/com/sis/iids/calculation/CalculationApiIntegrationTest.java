@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest(properties = "iids.worker.enabled=false")
 @AutoConfigureMockMvc(addFilters = false)
+@WithMockUser(roles = {"ADMIN", "INVESTMENT_ANALYST", "FINANCE_SPECIALIST", "TECHNICAL_ENGINEER", "PROJECT_MANAGER", "SYSTEM_ADMINISTRATOR"})
 @Transactional
 class CalculationApiIntegrationTest {
 
@@ -64,16 +66,26 @@ class CalculationApiIntegrationTest {
         mockMvc.perform(get("/api/v1/calculation-tasks/{taskId}/results", taskId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.metrics.TOTAL_INVESTMENT").value(220000.0000))
-                .andExpect(jsonPath("$.data.metrics.NPV").value(86204.4011))
-                .andExpect(jsonPath("$.data.metrics.ROI").value(0.1875))
-                .andExpect(jsonPath("$.data.metrics.IRR").value(0.2391))
+                .andExpect(jsonPath("$.data.metrics.CONSTRUCTION_INTEREST").value(0.0000))
+                .andExpect(jsonPath("$.data.metrics.NPV").value(88022.5829))
+                .andExpect(jsonPath("$.data.metrics.ROI").value(0.2273))
+                .andExpect(jsonPath("$.data.metrics.IRR").value(0.2477))
                 .andExpect(jsonPath("$.data.metrics.CAPITAL_NET_PROFIT_RATE").value(0.1705))
-                .andExpect(jsonPath("$.data.metrics.DYNAMIC_PAYBACK_YEARS").value(3.5152))
-                .andExpect(jsonPath("$.data.cashFlowRows", hasSize(6)))
-                .andExpect(jsonPath("$.data.cashFlowRows[1].netCashFlow").value(77500.0000));
+                .andExpect(jsonPath("$.data.metrics.STATIC_PAYBACK_YEARS").value(2.8387))
+                .andExpect(jsonPath("$.data.metrics.DYNAMIC_PAYBACK_YEARS").value(3.4808))
+                .andExpect(jsonPath("$.data.metrics.EQUITY_IRR").value(0.2477))
+                .andExpect(jsonPath("$.data.metrics.EQUITY_NPV").value(88022.5829))
+                // 三类报表 × 6 期 = 18 行
+                .andExpect(jsonPath("$.data.cashFlowRows", hasSize(18)))
+                // PROJECT 表 t1 投产年净现金流（扣流动资金投入）
+                .andExpect(jsonPath("$.data.cashFlowRows[?(@.statementType=='PROJECT_CASH_FLOW' && @.periodNo==1)].netCashFlow",
+                        org.hamcrest.Matchers.contains(57500.0000)))
+                // PROJECT 表 t5 末年回收流动资金
+                .andExpect(jsonPath("$.data.cashFlowRows[?(@.statementType=='PROJECT_CASH_FLOW' && @.periodNo==5)].netCashFlow",
+                        org.hamcrest.Matchers.contains(97500.0000)));
 
         List<CalculationResultEntity> persistedResults = resultRepository.findByTaskIdOrderByMetricCodeAsc(taskId);
-        assertThat(persistedResults).hasSize(7);
+        assertThat(persistedResults).hasSize(10);
         assertThat(persistedResults).allSatisfy(result -> assertThat(result.getInputHash()).isNotBlank());
     }
 
@@ -117,7 +129,7 @@ class CalculationApiIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("FAILED"))
                 .andExpect(jsonPath("$.data.progress").value(100))
-                .andExpect(jsonPath("$.data.errorMessage").value("Parameter set is required"));
+                .andExpect(jsonPath("$.data.errorMessage").value("请先维护测算参数集"));
     }
 
     private org.springframework.test.web.servlet.ResultActions createCalculationTask(Long scenarioId, String requestKey) throws Exception {

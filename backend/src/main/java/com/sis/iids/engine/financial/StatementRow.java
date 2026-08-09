@@ -2,7 +2,11 @@ package com.sis.iids.engine.financial;
 
 import java.math.BigDecimal;
 
-public class CashFlowPeriod {
+/**
+ * 现金流量表行（设计文档 §6.2，落 cash_flow_row）。
+ * 分解列为损益口径事实列：tax 为实际所得税（与(a)表 outflow 中的调整所得税口径区分）。
+ */
+public class StatementRow {
 
     private int periodNo;
     private BigDecimal inflow = BigDecimal.ZERO;
@@ -13,6 +17,7 @@ public class CashFlowPeriod {
     private BigDecimal revenue = BigDecimal.ZERO;
     private BigDecimal operatingCost = BigDecimal.ZERO;
     private BigDecimal depreciation = BigDecimal.ZERO;
+    private BigDecimal amortization = BigDecimal.ZERO;
     private BigDecimal interest = BigDecimal.ZERO;
     private BigDecimal tax = BigDecimal.ZERO;
     private BigDecimal netProfit = BigDecimal.ZERO;
@@ -87,6 +92,14 @@ public class CashFlowPeriod {
 
     public void setDepreciation(BigDecimal depreciation) {
         this.depreciation = depreciation;
+    }
+
+    public BigDecimal getAmortization() {
+        return amortization;
+    }
+
+    public void setAmortization(BigDecimal amortization) {
+        this.amortization = amortization;
     }
 
     public BigDecimal getInterest() {

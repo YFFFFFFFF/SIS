@@ -1,7 +1,10 @@
+/* ============================================================
+ * 基础样式（配合 tokens.css）
+ * 布局壳 / 登录页 / 通用栅格
+ * ============================================================ */
+
 :root {
-  color: #1d2433;
-  background: #f5f7fb;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #e8e8e8;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }
@@ -14,7 +17,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background: #f5f7fb;
+  background: #e8e8e8;
 }
 
 button,
@@ -24,149 +27,182 @@ select {
   font: inherit;
 }
 
+/* ============================================================
+ * 登录页（DESIGN.md 登录页规则）
+ * 全屏背景图 · 无遮罩 · 顶部 logo · 16px/#313233 加粗系统名
+ * ============================================================ */
 .login-page {
   min-height: 100vh;
   display: grid;
   place-items: center;
-  padding: 32px;
-  background: linear-gradient(135deg, #eef3f8 0%, #f8faf7 100%);
+  padding: var(--space-5);
+  background-image: url('../img/login-bg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 .login-panel {
-  width: min(920px, 100%);
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 380px;
-  gap: 32px;
-  align-items: center;
-  padding: 40px;
-  border: 1px solid #dbe2ea;
-  border-radius: 8px;
+  width: 400px;
+  max-width: 100%;
+  padding: 40px 36px 32px;
+  border-radius: var(--radius-sm);
   background: #ffffff;
-  box-shadow: 0 18px 48px rgba(25, 37, 55, 0.08);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.16);
 }
 
-.login-copy h1,
-.workbench-header h1 {
-  margin: 0;
-  color: #172033;
-  letter-spacing: 0;
+.login-logo {
+  display: block;
+  width: 120px;
+  margin: 0 auto var(--space-3);
 }
 
-.login-copy p,
-.workbench-header p,
-.overview-grid p {
-  margin: 8px 0 0;
-  color: #657386;
-  line-height: 1.6;
+.login-system-name {
+  margin: 0 0 var(--space-5);
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  color: #313233;
+  text-align: center;
+  letter-spacing: 1px;
 }
 
 .login-form {
   display: grid;
-  gap: 14px;
+  gap: var(--space-3);
 }
 
 .login-button {
   width: 100%;
 }
 
-.brand-block {
+/* ============================================================
+ * 工作台布局壳（WorkbenchLayout.vue）
+ * 顶导固定 #005eba · 侧导固定 · 主区 #e8e8e8 · Footer 版权
+ * ============================================================ */
+.app-shell {
+  height: 100vh;
   display: flex;
-  gap: 12px;
-  align-items: center;
-  height: 72px;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ---- 顶导 ---- */
+.app-header {
+  height: 60px;
+  width: 100%;
   padding: 0 20px;
-  border-bottom: 1px solid #dfe6ee;
-}
-
-.brand-mark {
-  width: 36px;
-  height: 36px;
-  display: grid;
-  place-items: center;
-  border-radius: 8px;
-  background: #245c73;
+  background-color: #005eba;
   color: #ffffff;
-  font-size: 13px;
-  font-weight: 700;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  z-index: 100;
 }
 
-.brand-mark.large {
-  width: 48px;
-  height: 48px;
-  margin-bottom: 20px;
+.app-header .hd-logo {
+  width: 54px;
+  height: auto;
+  margin-right: 54px;
+}
+
+.app-header .hd-title {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: #ffffff;
+  letter-spacing: 1px;
+}
+
+.app-header .hd-user {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: #ffffff;
+}
+
+.app-header .hd-user .uicon {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
   font-size: 15px;
 }
 
-.brand-title {
-  font-weight: 700;
-  color: #172033;
+.app-header .hd-user .uname {
+  color: #ffffff;
+  font-size: var(--font-size-sm);
 }
 
-.brand-subtitle {
-  margin-top: 2px;
-  color: #66758a;
-  font-size: 12px;
+.app-header .hd-logout {
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.6);
 }
 
-.workbench-shell {
-  min-height: 100vh;
+/* ---- 壳体：侧导 + 主列 ---- */
+.app-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
 }
 
-.workbench-sidebar {
-  border-right: 1px solid #dfe6ee;
+.app-sidebar {
+  width: 230px;
+  flex-shrink: 0;
   background: #ffffff;
+  border-right: 1px solid #e4e7ed;
+  overflow-y: auto;
 }
 
-.shell-menu {
+.app-sidebar .shell-menu {
   border-right: 0;
 }
 
-.workbench-header {
-  height: 72px;
+/* ---- 主列：主内容区 + Footer ---- */
+.app-main-col {
+  flex: 1;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  border-bottom: 1px solid #dfe6ee;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.app-main {
+  flex: 1;
+  overflow-y: auto;
+  background: #e8e8e8;
+  padding: 20px;
+}
+
+.app-main .content-wrapper {
   background: #ffffff;
+  padding: 20px;
+  min-height: 100%;
+  border-radius: var(--radius-sm);
 }
 
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+.app-footer {
+  flex-shrink: 0;
+  text-align: center;
+  padding: var(--space-2) 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  background: #ffffff;
+  border-top: 1px solid #e4e7ed;
 }
 
-.workbench-main {
-  padding: 24px;
-}
-
+/* ============================================================
+ * 通用栅格与工具（各业务视图复用）
+ * ============================================================ */
 .overview-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
 }
 
-@media (max-width: 840px) {
-  .login-panel {
-    grid-template-columns: 1fr;
-    padding: 24px;
-  }
-
-  .workbench-sidebar {
-    display: none;
-  }
-
-  .workbench-header {
-    height: auto;
-    align-items: flex-start;
-    padding: 16px;
-  }
-
-  .overview-grid {
-    grid-template-columns: 1fr;
-  }
-}
 .workflow-tabs .el-tabs__content {
   overflow: visible;
 }
@@ -240,10 +276,23 @@ select {
   margin-bottom: 16px;
 }
 
+/* ============================================================
+ * 响应式
+ * ============================================================ */
 @media (max-width: 1120px) {
   .split-panel,
   .triple-panel,
   .dense-form.two-cols {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 840px) {
+  .app-sidebar {
+    display: none;
+  }
+
+  .overview-grid {
     grid-template-columns: 1fr;
   }
 }

@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +20,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc(addFilters = false)
+@WithMockUser(roles = {"ADMIN", "INVESTMENT_ANALYST", "FINANCE_SPECIALIST", "TECHNICAL_ENGINEER", "PROJECT_MANAGER", "SYSTEM_ADMINISTRATOR"})
 @Transactional
 class EditLockApiIntegrationTest {
 
@@ -56,9 +58,9 @@ class EditLockApiIntegrationTest {
         mockMvc.perform(post("/api/v1/scenarios/{scenarioId}/lock", scenarioId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(lockRequest(202, "Analyst B", 30)))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("CONFLICT"))
-                .andExpect(jsonPath("$.message").value("Scenario is locked by Analyst A"));
+                .andExpect(jsonPath("$.message").value("测算方案正在被编辑，锁持有人：Analyst A"));
     }
 
     @Test

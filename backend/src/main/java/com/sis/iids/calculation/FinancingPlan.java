@@ -20,6 +20,10 @@ public class FinancingPlan {
     private BigDecimal interestRate;
     @Column(name = "term_years", nullable = false)
     private Integer termYears;
+    @Column(name = "repayment_method", nullable = false, length = 32)
+    private String repaymentMethod = "EQUAL_PRINCIPAL";
+    @Column(name = "grace_years", nullable = false)
+    private Integer graceYears = 0;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -35,4 +39,8 @@ public class FinancingPlan {
     public void setInterestRate(BigDecimal interestRate) { this.interestRate = interestRate; }
     public Integer getTermYears() { return termYears; }
     public void setTermYears(Integer termYears) { this.termYears = termYears; }
+    public String getRepaymentMethod() { return repaymentMethod; }
+    public void setRepaymentMethod(String repaymentMethod) { this.repaymentMethod = repaymentMethod; }
+    public Integer getGraceYears() { return graceYears; }
+    public void setGraceYears(Integer graceYears) { this.graceYears = graceYears; }
 }

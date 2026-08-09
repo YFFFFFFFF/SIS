@@ -16,11 +16,11 @@ public class ApiResponse<T> {
     }
 
     public static <T> ApiResponse<T> ok(T data) {
-        return new ApiResponse<>("SUCCESS", "ok", data);
+        return new ApiResponse<>("SUCCESS", "成功", data);
     }
 
     public static ApiResponse<Void> ok() {
-        return new ApiResponse<>("SUCCESS", "ok", null);
+        return new ApiResponse<>("SUCCESS", "成功", null);
     }
 
     public static ApiResponse<Void> fail(String code, String message) {

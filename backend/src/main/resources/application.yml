@@ -22,8 +22,8 @@ iids:
   security:
     jwt-secret: change-this-m1-demo-secret-key-please-32bytes-min
     jwt-expire-seconds: 86400
-  formula-version: fin-m1-1.0.0
-  engine-version: 0.1.0
+  formula-version: fin-std-2.0.0
+  engine-version: 2.0.0
   report-dir: ./data/reports
   upload-dir: ./data/uploads
   worker:

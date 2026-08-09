@@ -2,6 +2,7 @@ package com.sis.iids.scenario;
 
 import com.sis.iids.common.api.ApiResponse;
 import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,6 +24,7 @@ public class ScenarioController {
     }
 
     @PostMapping("/projects/{projectId}/scenarios")
+    @PreAuthorize("hasAnyRole('ANALYST','INVESTMENT_ANALYST','PROJECT_MANAGER','ADMIN','SYSTEM_ADMINISTRATOR')")
     public ApiResponse<ScenarioResponse> create(@PathVariable Long projectId,
                                                 @Valid @RequestBody ScenarioCreateRequest request) {
         return ApiResponse.ok(scenarioService.create(projectId, request));
@@ -39,12 +41,14 @@ public class ScenarioController {
     }
 
     @PutMapping("/scenarios/{id}")
+    @PreAuthorize("hasAnyRole('ANALYST','INVESTMENT_ANALYST','PROJECT_MANAGER','ADMIN','SYSTEM_ADMINISTRATOR')")
     public ApiResponse<ScenarioResponse> update(@PathVariable Long id,
                                                 @Valid @RequestBody ScenarioUpdateRequest request) {
         return ApiResponse.ok(scenarioService.update(id, request));
     }
 
     @PutMapping("/scenarios/{id}/parameters")
+    @PreAuthorize("hasAnyRole('ANALYST','INVESTMENT_ANALYST','FINANCE_SPECIALIST','ADMIN','SYSTEM_ADMINISTRATOR')")
     public ApiResponse<ParameterSetResponse> upsertParameters(@PathVariable Long id,
                                                               @Valid @RequestBody ParameterSetRequest request) {
         return ApiResponse.ok(scenarioService.upsertParameters(id, request));

@@ -23,7 +23,7 @@ public class ProjectService {
     public ProjectResponse create(ProjectCreateRequest request) {
         String code = request.code().trim();
         if (projectRepository.existsByCode(code)) {
-            throw new BusinessException(ErrorCode.CONFLICT, "Project code already exists");
+            throw new BusinessException(ErrorCode.CONFLICT, "项目编码已存在");
         }
 
         Project project = new Project();
@@ -71,7 +71,7 @@ public class ProjectService {
 
     private Project findProject(Long id) {
         return projectRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Project not found"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "项目不存在"));
     }
 
     private String projectSnapshot(Project project) {

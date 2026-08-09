@@ -31,6 +31,9 @@ public class ApprovalInstance {
     @Column(name = "current_node", nullable = false, length = 32)
     private String currentNode;
 
+    @Column(name = "flow_def_id")
+    private Long flowDefId;
+
     @Column(name = "submitted_by")
     private Long submittedBy;
 
@@ -60,6 +63,8 @@ public class ApprovalInstance {
     public void setStatus(ApprovalStatus status) { this.status = status; }
     public String getCurrentNode() { return currentNode; }
     public void setCurrentNode(String currentNode) { this.currentNode = currentNode; }
+    public Long getFlowDefId() { return flowDefId; }
+    public void setFlowDefId(Long flowDefId) { this.flowDefId = flowDefId; }
     public Long getSubmittedBy() { return submittedBy; }
     public void setSubmittedBy(Long submittedBy) { this.submittedBy = submittedBy; }
     public LocalDateTime getCreatedAt() { return createdAt; }

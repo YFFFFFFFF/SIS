@@ -18,6 +18,12 @@ public class InvestmentItem {
     private BigDecimal amount;
     @Column(name = "year_no", nullable = false)
     private Integer yearNo = 0;
+    @Column(name = "item_code", length = 32)
+    private String itemCode;
+    @Column(name = "parent_id")
+    private Long parentId;
+    @Column(name = "sort_order", nullable = false)
+    private Integer sortOrder = 0;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -31,4 +37,10 @@ public class InvestmentItem {
     public void setAmount(BigDecimal amount) { this.amount = amount; }
     public Integer getYearNo() { return yearNo; }
     public void setYearNo(Integer yearNo) { this.yearNo = yearNo; }
+    public String getItemCode() { return itemCode; }
+    public void setItemCode(String itemCode) { this.itemCode = itemCode; }
+    public Long getParentId() { return parentId; }
+    public void setParentId(Long parentId) { this.parentId = parentId; }
+    public Integer getSortOrder() { return sortOrder; }
+    public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
 }

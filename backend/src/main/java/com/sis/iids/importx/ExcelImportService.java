@@ -56,7 +56,7 @@ public class ExcelImportService {
     @Transactional
     public ImportJobResponse importExcel(Long scenarioId, MultipartFile file) {
         if (!scenarioRepository.existsById(scenarioId)) {
-            throw new BusinessException(ErrorCode.NOT_FOUND, "Scenario not found");
+            throw new BusinessException(ErrorCode.NOT_FOUND, "测算方案不存在");
         }
         String fileName = normalizeFileName(file.getOriginalFilename());
         try {
@@ -64,7 +64,7 @@ public class ExcelImportService {
             parameterSetRepository.save(parsed.parameterSet());
             investmentItemRepository.saveAll(parsed.investmentItems());
             financingPlanRepository.saveAll(parsed.financingPlans());
-            ImportJob job = saveJob(scenarioId, fileName, ImportJobStatus.SUCCESS, "Imported Excel template successfully");
+            ImportJob job = saveJob(scenarioId, fileName, ImportJobStatus.SUCCESS, "Excel 模板导入成功");
             auditService.record("IMPORT_SUCCESS", "IMPORT_JOB", job.getId().toString(), null,
                     "scenarioId=%s;fileName=%s".formatted(scenarioId, fileName));
             return ImportJobResponse.from(job);
@@ -73,7 +73,7 @@ public class ExcelImportService {
             auditService.record("IMPORT_FAILURE", "IMPORT_JOB", job.getId().toString(), null, ex.getMessage());
             return ImportJobResponse.from(job);
         } catch (IOException ex) {
-            ImportJob job = saveJob(scenarioId, fileName, ImportJobStatus.FAILED, "Excel file could not be read");
+            ImportJob job = saveJob(scenarioId, fileName, ImportJobStatus.FAILED, "Excel 文件读取失败");
             auditService.record("IMPORT_FAILURE", "IMPORT_JOB", job.getId().toString(), null, job.getMessage());
             return ImportJobResponse.from(job);
         }
@@ -82,12 +82,12 @@ public class ExcelImportService {
     @Transactional(readOnly = true)
     public ImportJobResponse getJob(Long jobId) {
         return ImportJobResponse.from(importJobRepository.findById(jobId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Import job not found")));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "导入任务不存在")));
     }
 
     private ParsedImport parse(MultipartFile file, Long scenarioId) throws IOException {
         if (file == null || file.isEmpty()) {
-            throw new ImportValidationException("Excel file is required");
+            throw new ImportValidationException("请上传 Excel 文件");
         }
         try (InputStream inputStream = file.getInputStream(); Workbook workbook = WorkbookFactory.create(inputStream)) {
             ParameterSet parameterSet = parseParameters(requiredSheet(workbook, "Parameters"), scenarioId);
@@ -168,7 +168,7 @@ public class ExcelImportService {
     private Sheet requiredSheet(Workbook workbook, String name) {
         Sheet sheet = workbook.getSheet(name);
         if (sheet == null) {
-            throw new ImportValidationException("Sheet %s is required".formatted(name));
+            throw new ImportValidationException("缺少必填工作表：%s".formatted(name));
         }
         return sheet;
     }
@@ -176,7 +176,7 @@ public class ExcelImportService {
     private String requiredText(Row row, int column, String sheet, int rowNumber, String field) {
         String value = cell(row, column);
         if (value.isBlank()) {
-            throw new ImportValidationException("%s row %d %s is required".formatted(sheet, rowNumber, field));
+            throw new ImportValidationException("%s 第 %d 行字段 %s 不能为空".formatted(sheet, rowNumber, field));
         }
         return value;
     }
@@ -184,40 +184,40 @@ public class ExcelImportService {
     private BigDecimal decimal(Map<String, String> values, String field) {
         String value = values.get(field);
         if (value == null || value.isBlank()) {
-            throw new ImportValidationException("Parameters %s is required".formatted(field));
+            throw new ImportValidationException("Parameters 工作表字段 %s 不能为空".formatted(field));
         }
-        return parseDecimal(value, "Parameters %s".formatted(field));
+        return parseDecimal(value, "Parameters 工作表字段 %s".formatted(field));
     }
 
     private Integer integer(Map<String, String> values, String field) {
         String value = values.get(field);
         if (value == null || value.isBlank()) {
-            throw new ImportValidationException("Parameters %s is required".formatted(field));
+            throw new ImportValidationException("Parameters 工作表字段 %s 不能为空".formatted(field));
         }
-        return parseInteger(value, "Parameters %s".formatted(field));
+        return parseInteger(value, "Parameters 工作表字段 %s".formatted(field));
     }
 
     private BigDecimal decimal(Row row, int column, String sheet, int rowNumber, String field) {
         String value = cell(row, column);
         if (value.isBlank()) {
-            throw new ImportValidationException("%s row %d %s is required".formatted(sheet, rowNumber, field));
+            throw new ImportValidationException("%s 第 %d 行字段 %s 不能为空".formatted(sheet, rowNumber, field));
         }
-        return parseDecimal(value, "%s row %d %s".formatted(sheet, rowNumber, field));
+        return parseDecimal(value, "%s 第 %d 行字段 %s".formatted(sheet, rowNumber, field));
     }
 
     private Integer integer(Row row, int column, String sheet, int rowNumber, String field) {
         String value = cell(row, column);
         if (value.isBlank()) {
-            throw new ImportValidationException("%s row %d %s is required".formatted(sheet, rowNumber, field));
+            throw new ImportValidationException("%s 第 %d 行字段 %s 不能为空".formatted(sheet, rowNumber, field));
         }
-        return parseInteger(value, "%s row %d %s".formatted(sheet, rowNumber, field));
+        return parseInteger(value, "%s 第 %d 行字段 %s".formatted(sheet, rowNumber, field));
     }
 
     private BigDecimal parseDecimal(String value, String label) {
         try {
             return new BigDecimal(value.trim().replace(",", ""));
         } catch (NumberFormatException ex) {
-            throw new ImportValidationException("%s must be a number".formatted(label));
+            throw new ImportValidationException("%s 必须是数字".formatted(label));
         }
     }
 
@@ -225,7 +225,7 @@ public class ExcelImportService {
         try {
             return new BigDecimal(value.trim().replace(",", "")).intValueExact();
         } catch (ArithmeticException | NumberFormatException ex) {
-            throw new ImportValidationException("%s must be an integer".formatted(label));
+            throw new ImportValidationException("%s 必须是整数".formatted(label));
         }
     }
 

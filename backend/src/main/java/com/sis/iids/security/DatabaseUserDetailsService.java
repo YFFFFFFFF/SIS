@@ -24,7 +24,7 @@ public class DatabaseUserDetailsService implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         SysUser user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+                .orElseThrow(() -> new UsernameNotFoundException("用户不存在"));
         var authorities = user.getRoles().stream()
                 .map(SysRole::getCode)
                 .sorted(Comparator.naturalOrder())

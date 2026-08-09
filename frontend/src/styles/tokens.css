@@ -1,0 +1,127 @@
+/* ============================================================
+ * DESIGN.md 设计 token（BOE 设计规范）
+ * 主色 #005eba · PingFang 字体 · 语义化色彩/间距/圆角/动效
+ * ============================================================ */
+:root {
+  /* ---- 品牌主色（所有 primary 场景统一 #005eba） ---- */
+  --brand-primary: #005eba;
+
+  /* ---- 文本 ---- */
+  --color-text-primary: #000000;
+  --color-text-secondary: #313233;
+  --color-text-tertiary: #333333;
+  --color-text-inverse: #ffffff;
+
+  /* ---- 边框 / 表面 ---- */
+  --color-border-muted: #005eba;
+  --color-surface-muted: #e8f0fe;
+  --color-surface-raised: #f6f8fc;
+  --color-surface-strong: #fafafa;
+
+  /* ---- 字体 ---- */
+  --font-family-primary: "PingFang SC-Medium", "PingFang SC-Regular", "PingFang SC",
+    "STHeitiSC-Light", "Helvetica-Light", Arial, sans-serif;
+  --font-size-xs: 12px;
+  --font-size-sm: 14px;
+  --font-size-md: 16px;
+  --font-size-base: 14px;
+  --font-weight-base: 400;
+  --line-height-base: normal;
+
+  /* ---- 间距 ---- */
+  --space-1: 8px;
+  --space-2: 10px;
+  --space-3: 14px;
+  --space-4: 15px;
+  --space-5: 28px;
+
+  /* ---- 圆角 ---- */
+  --radius-xs: 4px;
+  --radius-sm: 4px;
+
+  /* ---- 阴影 ---- */
+  --shadow-1: rgba(0, 0, 0, 0) 0px 0px 0px 1000px inset;
+  --shadow-2: rgb(220, 223, 230) 0px 0px 0px 1px inset;
+
+  /* ---- 动效 ---- */
+  --motion-duration-instant: 100ms;
+  --motion-duration-fast: 200ms;
+  --motion-duration-normal: 250ms;
+  --motion-duration-slow: 300ms;
+
+  /* ============================================================
+   * Element Plus 主题覆盖：所有蓝色系统一替换为 #005eba
+   * ============================================================ */
+  --el-color-primary: #005eba;
+  --el-color-primary-light-3: #337ecb;
+  --el-color-primary-light-5: #669ed8;
+  --el-color-primary-light-7: #99bfe5;
+  --el-color-primary-light-8: #b8d0ec;
+  --el-color-primary-light-9: #e8f0fe;
+  --el-color-primary-dark-2: #004b95;
+
+  /* Element Plus 圆角/字号对齐 token */
+  --el-border-radius-base: 4px;
+  --el-border-radius-small: 4px;
+  --el-border-radius-round: 4px;
+  --el-font-size-base: 14px;
+  --el-font-size-small: 12px;
+  --el-font-size-large: 16px;
+
+  /* Element Plus 文本/边框/填充色对齐 */
+  --el-text-color-primary: #000000;
+  --el-text-color-regular: #313233;
+  --el-text-color-secondary: #333333;
+  --el-fill-color-light: #f6f8fc;
+  --el-fill-color-lighter: #fafafa;
+  --el-fill-color-blank: #ffffff;
+}
+
+/* ---- 全局字体 ---- */
+body {
+  font-family: var(--font-family-primary);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-base);
+  line-height: var(--line-height-base);
+  color: var(--color-text-primary);
+}
+
+/* ---- 可访问性：键盘优先 focus-visible，不隐藏焦点指示器 ---- */
+:focus-visible {
+  outline: 2px solid var(--brand-primary);
+  outline-offset: 2px;
+}
+.el-button:focus-visible,
+.el-input__wrapper:focus-visible,
+.el-select__wrapper:focus-visible,
+.el-menu-item:focus-visible,
+.el-radio-button__inner:focus-visible {
+  outline: 2px solid var(--brand-primary);
+  outline-offset: 2px;
+}
+
+/* ---- 表格：水平铺满 + 单元格内边距 ---- */
+.el-table {
+  width: 100%;
+}
+/* 优化记录 1.1：表格列内容居中 */
+.el-table .el-table__cell {
+  text-align: center;
+}
+/* 长文本列保持左对齐可读性 */
+.el-table .el-table__cell .cell {
+  word-break: break-word;
+}
+.el-table th.el-table__cell {
+  background: var(--color-surface-raised);
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+/* ---- 组件动效统一 token ---- */
+.el-button,
+.el-menu-item,
+.el-input__wrapper,
+.el-select__wrapper {
+  transition-duration: var(--motion-duration-fast);
+}

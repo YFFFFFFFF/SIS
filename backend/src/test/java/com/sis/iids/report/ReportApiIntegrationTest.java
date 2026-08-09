@@ -1,6 +1,7 @@
 package com.sis.iids.report;
 
 import com.sis.iids.worker.CalculationWorker;
+import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.junit.jupiter.api.Test;
@@ -8,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "iids.report-dir=target/test-reports"
 })
 @AutoConfigureMockMvc(addFilters = false)
+@WithMockUser(roles = {"ADMIN", "INVESTMENT_ANALYST", "FINANCE_SPECIALIST", "TECHNICAL_ENGINEER", "PROJECT_MANAGER", "SYSTEM_ADMINISTRATOR"})
 @Transactional
 class ReportApiIntegrationTest {
 
@@ -60,6 +63,7 @@ class ReportApiIntegrationTest {
         ReportDocument document = reportDocumentRepository.findById(reportId).orElseThrow();
         assertThat(document.getStatus()).isEqualTo(ReportDocumentStatus.GENERATED);
         assertThat(document.getFilePath()).isNotBlank();
+        assertThat(document.getTitle()).startsWith("投资回报分析报告");
     }
 
     @Test
@@ -82,11 +86,56 @@ class ReportApiIntegrationTest {
         byte[] content = download.getContentAsByteArray();
         assertThat(content.length).isGreaterThan(1000);
         try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(content))) {
-            assertThat(workbook.getSheet("Metric Summary")).isNotNull();
-            assertThat(workbook.getSheet("Cash Flow")).isNotNull();
-            assertThat(workbook.getSheet("Metric Summary").getRow(1).getCell(0).getStringCellValue())
+            // R-06 结构化报告：七个 sheet
+            assertThat(workbook.getSheet("报告说明")).isNotNull();
+            assertThat(workbook.getSheet("项目概况")).isNotNull();
+            assertThat(workbook.getSheet("指标汇总")).isNotNull();
+            assertThat(workbook.getSheet("投资估算")).isNotNull();
+            assertThat(workbook.getSheet("现金流量表")).isNotNull();
+            assertThat(workbook.getSheet("利润流向")).isNotNull();
+            assertThat(workbook.getSheet("还本付息")).isNotNull();
+            assertThat(workbook.getSheet("指标汇总").getRow(0).getCell(0).getStringCellValue())
+                    .isEqualTo("指标编码");
+            assertThat(workbook.getSheet("现金流量表").getRow(0).getCell(4).getStringCellValue())
+                    .isEqualTo("净现金流量");
+            assertThat(workbook.getSheet("指标汇总").getRow(1).getCell(0).getStringCellValue())
                     .isEqualTo("CAPITAL_NET_PROFIT_RATE");
+            // 报告说明引用公式版本/引擎版本/输入哈希（FR-01-06 约束）
+            Sheet meta = workbook.getSheet("报告说明");
+            java.util.Set<String> metaKeys = new java.util.HashSet<>();
+            meta.forEach(row -> metaKeys.add(row.getCell(0).getStringCellValue()));
+            assertThat(metaKeys).contains("公式版本", "引擎版本", "输入哈希", "投资建议");
         }
+    }
+
+    @Test
+    void pdfReportCanBeGeneratedAndDownloaded() throws Exception {
+        Long taskId = completedCalculationTask("SIS-R06-PDF", "report-pdf-001");
+        String response = mockMvc.perform(post("/api/v1/calculation-tasks/{taskId}/reports?format=PDF", taskId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.fileType").value("PDF"))
+                .andExpect(jsonPath("$.data.fileName", endsWith(".pdf")))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        Long reportId = extractId(response);
+
+        MockHttpServletResponse download = mockMvc.perform(get("/api/v1/reports/{reportId}/download", reportId))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/pdf"))
+                .andReturn()
+                .getResponse();
+        byte[] content = download.getContentAsByteArray();
+        // PDF 魔数 %PDF
+        assertThat(content.length).isGreaterThan(500);
+        assertThat(new String(content, 0, 4)).isEqualTo("%PDF");
+    }
+
+    @Test
+    void rejectsUnsupportedReportFormat() throws Exception {
+        Long taskId = completedCalculationTask("SIS-R06-BADFMT", "report-badfmt-001");
+        mockMvc.perform(post("/api/v1/calculation-tasks/{taskId}/reports?format=WORD", taskId))
+                .andExpect(status().isBadRequest());
     }
 
     private Long completedCalculationTask(String projectCode, String requestKey) throws Exception {

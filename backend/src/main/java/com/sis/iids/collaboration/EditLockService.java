@@ -27,7 +27,7 @@ public class EditLockService {
     @Transactional
     public EditLockResponse acquire(Long scenarioId, AcquireLockRequest request) {
         if (!scenarioRepository.existsById(scenarioId)) {
-            throw new BusinessException(ErrorCode.NOT_FOUND, "Scenario not found");
+            throw new BusinessException(ErrorCode.NOT_FOUND, "测算方案不存在");
         }
         LocalDateTime now = LocalDateTime.now();
         EditLock lock = editLockRepository.findByScenarioId(scenarioId)
@@ -50,9 +50,9 @@ public class EditLockService {
     @Transactional
     public ReleaseLockResponse release(Long scenarioId, ReleaseLockRequest request) {
         EditLock lock = editLockRepository.findByScenarioId(scenarioId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Edit lock not found"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "编辑锁不存在或已释放"));
         if (!lock.getHolderId().equals(request.holderId())) {
-            throw new BusinessException(ErrorCode.CONFLICT, "Only lock holder can release the scenario lock");
+            throw new BusinessException(ErrorCode.CONFLICT, "只有当前锁持有人可以释放该方案编辑锁");
         }
         String lockId = lock.getId().toString();
         editLockRepository.delete(lock);
@@ -65,6 +65,6 @@ public class EditLockService {
         if (existing.getHolderId().equals(request.holderId()) || existing.getExpireAt().isBefore(now)) {
             return existing;
         }
-        throw new BusinessException(ErrorCode.CONFLICT, "Scenario is locked by " + existing.getHolderName());
+        throw new BusinessException(ErrorCode.CONFLICT, "测算方案正在被编辑，锁持有人：" + existing.getHolderName());
     }
 }

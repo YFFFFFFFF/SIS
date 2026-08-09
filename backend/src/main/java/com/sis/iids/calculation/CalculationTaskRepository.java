@@ -8,4 +8,7 @@ public interface CalculationTaskRepository extends JpaRepository<CalculationTask
     Optional<CalculationTask> findByScenarioIdAndRequestKey(Long scenarioId, String requestKey);
 
     Optional<CalculationTask> findFirstByStatusOrderByCreatedAtAsc(CalculationStatus status);
+
+    Optional<CalculationTask> findFirstByScenarioIdAndStatusOrderByFinishedAtDesc(Long scenarioId,
+                                                                                  CalculationStatus status);
 }
