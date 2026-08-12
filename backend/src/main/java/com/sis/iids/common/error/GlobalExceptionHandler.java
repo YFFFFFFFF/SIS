@@ -51,6 +51,12 @@ public class GlobalExceptionHandler {
         return ApiResponse.fail(ErrorCode.BAD_REQUEST.getCode(), "请求参数类型错误：" + ex.getName());
     }
 
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiResponse<Void> handleUnreadableBody(org.springframework.http.converter.HttpMessageNotReadableException ex) {
+        return ApiResponse.fail(ErrorCode.BAD_REQUEST.getCode(), "请求体格式错误，请检查 JSON 语法和字段类型");
+    }
+
     @ExceptionHandler(ConstraintViolationException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiResponse<Void> handleConstraint(ConstraintViolationException ex) {

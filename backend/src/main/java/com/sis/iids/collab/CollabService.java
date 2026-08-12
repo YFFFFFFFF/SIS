@@ -9,6 +9,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -44,10 +45,14 @@ public class CollabService {
     // ============================================================
     // SSE 订阅
     // ============================================================
-    public SseEmitter subscribe(Long scenarioId) {
+    public void ensureScenarioExists(Long scenarioId) {
         if (!scenarioRepository.existsById(scenarioId)) {
             throw new BusinessException(ErrorCode.NOT_FOUND, "测算方案不存在");
         }
+    }
+
+    public SseEmitter subscribe(Long scenarioId) {
+        ensureScenarioExists(scenarioId);
         return eventBus.subscribe(scenarioId);
     }
 
@@ -78,6 +83,23 @@ public class CollabService {
         CommentResponse response = toCommentResponse(comment);
         eventBus.publish(scenarioId, "comment", response);
         return response;
+    }
+
+    @Transactional
+    public void deleteComment(Long scenarioId, Long commentId, String requesterName, boolean canManageAll) {
+        ensureScenarioExists(scenarioId);
+        ScenarioComment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "评论不存在"));
+        if (!scenarioId.equals(comment.getScenarioId())) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "评论不存在");
+        }
+        if (!canManageAll && !comment.getAuthorName().equals(requesterName)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "只能删除自己发表的评论");
+        }
+        commentRepository.delete(comment);
+        recordChange(scenarioId, "COMMENT_DELETED", null, truncate(comment.getContent(), 200), null,
+                null, requesterName);
+        eventBus.publish(scenarioId, "comment-deleted", Map.of("commentId", commentId));
     }
 
     // ============================================================
@@ -128,12 +150,23 @@ public class CollabService {
         return online;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<PresenceResponse> listPresence(Long scenarioId) {
+        ensureScenarioExists(scenarioId);
         LocalDateTime since = LocalDateTime.now().minusSeconds(PRESENCE_ONLINE_SECONDS);
+        presenceRepository.deleteByScenarioIdAndLastSeenAtBefore(scenarioId, since);
         return presenceRepository.findByScenarioIdAndLastSeenAtAfter(scenarioId, since).stream()
                 .map(p -> new PresenceResponse(p.getUserId(), p.getUserName(), p.getLastSeenAt()))
                 .toList();
+    }
+
+    @Transactional
+    public List<PresenceResponse> leave(Long scenarioId, Long userId) {
+        ensureScenarioExists(scenarioId);
+        presenceRepository.deleteByScenarioIdAndUserId(scenarioId, userId);
+        List<PresenceResponse> online = listPresence(scenarioId);
+        eventBus.publish(scenarioId, "presence", online);
+        return online;
     }
 
     // ============================================================

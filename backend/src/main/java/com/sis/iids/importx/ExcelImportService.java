@@ -61,10 +61,16 @@ public class ExcelImportService {
         String fileName = normalizeFileName(file.getOriginalFilename());
         try {
             ParsedImport parsed = parse(file, scenarioId);
-            parameterSetRepository.save(parsed.parameterSet());
+            ParameterSet parameterSet = parameterSetRepository.findByScenarioId(scenarioId).orElseGet(ParameterSet::new);
+            applyImportedParameters(parameterSet, parsed.parameterSet());
+            parameterSetRepository.save(parameterSet);
+            investmentItemRepository.deleteAll(investmentItemRepository.findByScenarioId(scenarioId));
+            financingPlanRepository.deleteAll(financingPlanRepository.findByScenarioId(scenarioId));
             investmentItemRepository.saveAll(parsed.investmentItems());
             financingPlanRepository.saveAll(parsed.financingPlans());
-            ImportJob job = saveJob(scenarioId, fileName, ImportJobStatus.SUCCESS, "Excel 模板导入成功");
+            ImportJob job = saveJob(scenarioId, fileName, ImportJobStatus.SUCCESS,
+                    "Excel 模板导入成功：参数 1 组，投资项 %d 条，融资项 %d 条".formatted(
+                            parsed.investmentItems().size(), parsed.financingPlans().size()));
             auditService.record("IMPORT_SUCCESS", "IMPORT_JOB", job.getId().toString(), null,
                     "scenarioId=%s;fileName=%s".formatted(scenarioId, fileName));
             return ImportJobResponse.from(job);
@@ -111,7 +117,7 @@ public class ExcelImportService {
             values.put(field, cell(row, 1));
         }
 
-        ParameterSet parameterSet = parameterSetRepository.findByScenarioId(scenarioId).orElseGet(ParameterSet::new);
+        ParameterSet parameterSet = new ParameterSet();
         parameterSet.setScenarioId(scenarioId);
         parameterSet.setWacc(decimal(values, "wacc"));
         parameterSet.setTaxRate(decimal(values, "taxRate"));
@@ -124,6 +130,20 @@ public class ExcelImportService {
         parameterSet.setFixedOperatingCost(decimal(values, "fixedOperatingCost"));
         parameterSet.setFormulaVersion(blankToNull(values.get("formulaVersion")));
         return parameterSet;
+    }
+
+    private void applyImportedParameters(ParameterSet target, ParameterSet source) {
+        target.setScenarioId(source.getScenarioId());
+        target.setWacc(source.getWacc());
+        target.setTaxRate(source.getTaxRate());
+        target.setDepreciationYears(source.getDepreciationYears());
+        target.setResidualRate(source.getResidualRate());
+        target.setLoanRatioLimit(source.getLoanRatioLimit());
+        target.setPricePerUnit(source.getPricePerUnit());
+        target.setUnitCost(source.getUnitCost());
+        target.setAnnualOutput(source.getAnnualOutput());
+        target.setFixedOperatingCost(source.getFixedOperatingCost());
+        target.setFormulaVersion(source.getFormulaVersion());
     }
 
     private List<InvestmentItem> parseInvestmentItems(Sheet sheet, Long scenarioId) {

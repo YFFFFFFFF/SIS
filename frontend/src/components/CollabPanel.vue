@@ -20,6 +20,7 @@
             <div class="comment-head">
               <span class="author">{{ c.authorName }}</span>
               <span class="time">{{ formatTime(c.createdAt) }}</span>
+              <el-button v-if="canDeleteComment(c)" type="danger" text size="small" @click="deleteComment(c)">删除</el-button>
             </div>
             <div class="comment-body" v-html="highlightMentions(c.content)" />
             <div v-if="c.mentions" class="mentions">提及：{{ c.mentions }}</div>
@@ -45,9 +46,9 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { apiGet, apiPost } from '@/shared/api/http'
+import { apiDelete, apiGet, apiPost } from '@/shared/api/http'
 import type { ScenarioChange, ScenarioComment, ScenarioPresence } from '@/shared/types/domain'
 import { useAuthStore } from '@/stores/auth'
 
@@ -62,6 +63,9 @@ const posting = ref(false)
 const sseConnected = ref(false)
 let eventSource: EventSource | null = null
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null
+const myId = computed(() => auth.user?.username ? hashName(auth.user.username) : 0)
+const myUsername = computed(() => auth.user?.username ?? '')
+const isAdmin = computed(() => auth.user?.roles?.some(role => role === 'ROLE_ADMIN' || role === 'ROLE_SYSTEM_ADMINISTRATOR') ?? false)
 
 async function loadAll() {
   if (!props.scenarioId) {
@@ -94,20 +98,37 @@ async function postComment() {
   }
 }
 
-function connectSse() {
+function canDeleteComment(comment: ScenarioComment) {
+  return isAdmin.value || comment.authorName === myUsername.value
+}
+
+async function deleteComment(comment: ScenarioComment) {
+  if (!props.scenarioId) return
+  try {
+    await apiDelete(`/scenarios/${props.scenarioId}/comments/${comment.id}`)
+    comments.value = comments.value.filter(item => item.id !== comment.id)
+  } catch (err) {
+    ElMessage.error(err instanceof Error ? err.message : '删除评论失败')
+  }
+}
+
+async function connectSse() {
   disconnect()
   if (!props.scenarioId) return
-  const token = localStorage.getItem('iids.auth.token')
   const base = import.meta.env.VITE_API_BASE_URL ?? '/api/v1'
-  // EventSource 不支持自定义头 → token 经查询参数传递（后端 jwt 过滤器需兼容；不支持时 SSE 降级为轮询刷新）
-  const url = `${base}/scenarios/${props.scenarioId}/collab/stream${token ? `?token=${token}` : ''}`
   try {
+    const credential = await apiPost<{ ticket: string; expiresAt: string }>(`/scenarios/${props.scenarioId}/collab/tickets`)
+    const url = `${base}/scenarios/${props.scenarioId}/collab/stream?ticket=${encodeURIComponent(credential.ticket)}`
     eventSource = new EventSource(url)
     eventSource.onopen = () => { sseConnected.value = true }
     eventSource.onerror = () => { sseConnected.value = false }
     eventSource.addEventListener('comment', (e) => {
       const c = JSON.parse((e as MessageEvent).data) as ScenarioComment
       if (!comments.value.some(x => x.id === c.id)) comments.value.push(c)
+    })
+    eventSource.addEventListener('comment-deleted', (e) => {
+      const payload = JSON.parse((e as MessageEvent).data) as { commentId: number }
+      comments.value = comments.value.filter(item => item.id !== payload.commentId)
     })
     eventSource.addEventListener('change', (e) => {
       const c = JSON.parse((e as MessageEvent).data) as ScenarioChange
@@ -127,7 +148,7 @@ function startHeartbeat() {
   const beat = () => {
     if (!props.scenarioId) return
     apiPost<ScenarioPresence[]>(`/scenarios/${props.scenarioId}/presence`, {
-      userId: auth.user?.username ? hashName(auth.user.username) : 0,
+      userId: myId.value,
       userName: auth.user?.displayName ?? auth.user?.username ?? 'anonymous'
     }).then(ps => { presence.value = ps }).catch(() => { /* 心跳失败静默 */ })
   }
@@ -143,6 +164,11 @@ function disconnect() {
 
 function stopHeartbeat() {
   if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null }
+}
+
+function leavePresence(scenarioId: number | null | undefined) {
+  if (!scenarioId || !myId.value) return
+  void apiDelete(`/scenarios/${scenarioId}/presence/${myId.value}`).catch(() => {})
 }
 
 function hashName(name: string) {
@@ -161,14 +187,17 @@ function formatTime(t: string) {
 
 function changeTypeName(t: string) {
   return {
-    COMMENT_ADDED: '发表评论', FIELD_UPDATED: '更新字段', LOCK_ACQUIRED: '获取编辑锁',
+    COMMENT_ADDED: '发表评论', COMMENT_DELETED: '删除评论', FIELD_UPDATED: '更新字段', LOCK_ACQUIRED: '获取编辑锁',
     LOCK_RELEASED: '释放编辑锁', CALCULATION_RUN: '运行测算', APPROVAL_ACTION: '审批操作'
   }[t] ?? t
 }
 
-watch(() => props.scenarioId, () => { loadAll(); connectSse(); startHeartbeat() }, { immediate: true })
+watch(() => props.scenarioId, (_, previousScenarioId) => {
+  leavePresence(previousScenarioId)
+  loadAll(); connectSse(); startHeartbeat()
+}, { immediate: true })
 
-onBeforeUnmount(() => { disconnect(); stopHeartbeat() })
+onBeforeUnmount(() => { leavePresence(props.scenarioId); disconnect(); stopHeartbeat() })
 </script>
 
 <style scoped>

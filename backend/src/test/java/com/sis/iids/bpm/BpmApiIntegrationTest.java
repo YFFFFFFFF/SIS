@@ -44,8 +44,8 @@ class BpmApiIntegrationTest {
     }
 
     @Test
-    void flowCrudLifecycle() throws Exception {
-        String resp = mockMvc.perform(post("/api/v1/admin/approval-flows")
+    void flowMutationIsFrozenDuringUserTesting() throws Exception {
+        mockMvc.perform(post("/api/v1/admin/approval-flows")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"code":"COMMITTEE_CHAIN","name":"投委会审批链","description":"财务复核→投委会→总经理",
@@ -54,40 +54,19 @@ class BpmApiIntegrationTest {
                                    {"nodeCode":"COMMITTEE","nodeName":"投资委员会","seq":2,"approverRole":"INVESTMENT_COMMITTEE","conditionExpr":"参数调整 >±5% 升级"},
                                    {"nodeCode":"GM","nodeName":"总经理审批","seq":3,"approverRole":"GENERAL_MANAGER"}]}
                                 """))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.id", notNullValue()))
-                .andExpect(jsonPath("$.data.nodes", hasSize(3)))
-                .andReturn().getResponse().getContentAsString();
-        Long flowId = extractId(resp);
-
-        mockMvc.perform(put("/api/v1/admin/approval-flows/{id}", flowId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"code":"COMMITTEE_CHAIN","name":"投委会审批链v2",
-                                 "nodes":[
-                                   {"nodeCode":"REVIEW","nodeName":"财务复核","seq":1,"approverRole":"FINANCE_SPECIALIST"},
-                                   {"nodeCode":"COMMITTEE","nodeName":"投资委员会","seq":2,"approverRole":"INVESTMENT_COMMITTEE"}]}
-                                """))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.nodes", hasSize(2)))
-                .andExpect(jsonPath("$.data.name").value("投委会审批链v2"));
-
-        mockMvc.perform(delete("/api/v1/admin/approval-flows/{id}", flowId))
-                .andExpect(status().isOk());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message", org.hamcrest.Matchers.containsString("固定流程")));
     }
 
     @Test
-    void rejectsDuplicateCodeAndBadSeq() throws Exception {
-        // 与默认模板同 code
+    void frozenFlowRejectsAllCreateRequestsConsistently() throws Exception {
         mockMvc.perform(post("/api/v1/admin/approval-flows")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"code":"DEFAULT_REVIEW_CHAIN","name":"重复",
                                  "nodes":[{"nodeCode":"A","nodeName":"A","seq":1,"approverRole":"X"}]}
                                 """))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("CONFLICT"));
-        // seq 不连续
+                .andExpect(status().isBadRequest());
         mockMvc.perform(post("/api/v1/admin/approval-flows")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""

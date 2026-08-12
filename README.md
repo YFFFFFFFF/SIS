@@ -8,6 +8,8 @@
 
 - **[升级改造总体方案](docs/upgrade_plan.md)：M1 → PRD 全量的改造范围、优先级、设计红线与进度追踪（18/18 已完成）。任何改造工作必须先读此文档。**
 - [用户使用手册](docs/user_manual.md)：面向业务用户的本地启动和业务操作步骤。
+- [用户系统测试指南](docs/user_test_guide.md)：测试账号、推荐顺序、预期结果、已知限制和缺陷提交方式。
+- [缺陷台账](docs/defect_register.md)：缺陷分级、状态和回归验证记录。
 - [API 概览](docs/api_overview.md)：后端接口、请求示例、响应结构、角色权限矩阵。
 - Swagger UI：启动后端后访问 `http://localhost:8080/swagger-ui/index.html`。
 - [测试计划](docs/test_plan.md)：自动化验证命令和人工验收清单。

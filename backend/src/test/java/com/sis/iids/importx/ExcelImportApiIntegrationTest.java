@@ -63,7 +63,7 @@ class ExcelImportApiIntegrationTest {
                 .andExpect(jsonPath("$.data.scenarioId").value(scenarioId))
                 .andExpect(jsonPath("$.data.fileName").value("m1-template.xlsx"))
                 .andExpect(jsonPath("$.data.status").value("SUCCESS"))
-                .andExpect(jsonPath("$.data.message").value("Excel 模板导入成功"))
+                .andExpect(jsonPath("$.data.message", containsString("Excel 模板导入成功")))
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
@@ -100,6 +100,67 @@ class ExcelImportApiIntegrationTest {
         assertThat(financingPlanRepository.findByScenarioId(scenarioId)).isEmpty();
     }
 
+    @Test
+    void successfulRetryReplacesRowsInsteadOfDuplicatingThem() throws Exception {
+        Long scenarioId = createScenario(createProject("SIS-M1-IMPORT-RETRY"));
+        for (int attempt = 0; attempt < 2; attempt++) {
+            mockMvc.perform(multipart("/api/v1/scenarios/{scenarioId}/import/excel", scenarioId)
+                            .file(excelFile("retry.xlsx", validWorkbook())))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.status").value("SUCCESS"))
+                    .andExpect(jsonPath("$.data.message", containsString("投资项 2 条")));
+        }
+        assertThat(investmentItemRepository.findByScenarioId(scenarioId)).hasSize(2);
+        assertThat(financingPlanRepository.findByScenarioId(scenarioId)).hasSize(1);
+    }
+
+    @Test
+    void emptyFileCreatesFailedJobWithoutWritingData() throws Exception {
+        Long scenarioId = createScenario(createProject("SIS-M1-IMPORT-EMPTY"));
+
+        mockMvc.perform(multipart("/api/v1/scenarios/{scenarioId}/import/excel", scenarioId)
+                        .file(excelFile("empty.xlsx", new byte[0])))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("FAILED"))
+                .andExpect(jsonPath("$.data.message").value("请上传 Excel 文件"));
+
+        assertThat(parameterSetRepository.findByScenarioId(scenarioId)).isEmpty();
+        assertThat(investmentItemRepository.findByScenarioId(scenarioId)).isEmpty();
+        assertThat(financingPlanRepository.findByScenarioId(scenarioId)).isEmpty();
+    }
+
+    @Test
+    void failedRetryKeepsPreviouslyImportedDataIntact() throws Exception {
+        Long scenarioId = createScenario(createProject("SIS-M1-IMPORT-ATOMIC"));
+        mockMvc.perform(multipart("/api/v1/scenarios/{scenarioId}/import/excel", scenarioId)
+                        .file(excelFile("valid.xlsx", validWorkbook())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("SUCCESS"));
+
+        mockMvc.perform(multipart("/api/v1/scenarios/{scenarioId}/import/excel", scenarioId)
+                        .file(excelFile("invalid-retry.xlsx", invalidWorkbook("0.20"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("FAILED"));
+
+        assertThat(parameterSetRepository.findByScenarioId(scenarioId).orElseThrow().getWacc()).isEqualByComparingTo("0.10");
+        assertThat(investmentItemRepository.findByScenarioId(scenarioId)).hasSize(2);
+        assertThat(financingPlanRepository.findByScenarioId(scenarioId)).hasSize(1);
+    }
+
+    @Test
+    void importsHighRowCountWorkbook() throws Exception {
+        Long scenarioId = createScenario(createProject("SIS-M1-IMPORT-LARGE"));
+
+        mockMvc.perform(multipart("/api/v1/scenarios/{scenarioId}/import/excel", scenarioId)
+                        .file(excelFile("large.xlsx", highRowCountWorkbook(1000))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("SUCCESS"))
+                .andExpect(jsonPath("$.data.message", containsString("投资项 1000 条")));
+
+        assertThat(investmentItemRepository.findByScenarioId(scenarioId)).hasSize(1000);
+        assertThat(financingPlanRepository.findByScenarioId(scenarioId)).hasSize(1);
+    }
+
     private MockMultipartFile excelFile(String fileName, byte[] content) {
         return new MockMultipartFile(
                 "file",
@@ -119,8 +180,12 @@ class ExcelImportApiIntegrationTest {
     }
 
     private byte[] invalidWorkbook() throws Exception {
+        return invalidWorkbook("0.10");
+    }
+
+    private byte[] invalidWorkbook(String wacc) throws Exception {
         try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            parameterSheet(workbook);
+            parameterSheet(workbook, wacc);
             investmentSheet(workbook, "not-a-number");
             financingSheet(workbook);
             workbook.write(out);
@@ -128,10 +193,28 @@ class ExcelImportApiIntegrationTest {
         }
     }
 
+    private byte[] highRowCountWorkbook(int itemCount) throws Exception {
+        try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            parameterSheet(workbook);
+            Sheet sheet = workbook.createSheet("InvestmentItems");
+            row(sheet, 0, "category", "name", "amount", "yearNo");
+            for (int index = 1; index <= itemCount; index++) {
+                row(sheet, index, "CONSTRUCTION", "Item " + index, "100", "0");
+            }
+            financingSheet(workbook);
+            workbook.write(out);
+            return out.toByteArray();
+        }
+    }
+
     private void parameterSheet(XSSFWorkbook workbook) {
+        parameterSheet(workbook, "0.10");
+    }
+
+    private void parameterSheet(XSSFWorkbook workbook, String wacc) {
         Sheet sheet = workbook.createSheet("Parameters");
         row(sheet, 0, "field", "value");
-        row(sheet, 1, "wacc", "0.10");
+        row(sheet, 1, "wacc", wacc);
         row(sheet, 2, "taxRate", "0.25");
         row(sheet, 3, "depreciationYears", "5");
         row(sheet, 4, "residualRate", "0");

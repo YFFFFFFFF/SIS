@@ -4,6 +4,7 @@ import com.sis.iids.worker.CalculationWorker;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
+import com.lowagie.text.pdf.PdfReader;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -129,6 +130,15 @@ class ReportApiIntegrationTest {
         // PDF 魔数 %PDF
         assertThat(content.length).isGreaterThan(500);
         assertThat(new String(content, 0, 4)).isEqualTo("%PDF");
+        PdfReader reader = new PdfReader(content);
+        try {
+            assertThat(reader.getInfo().get("Title")).isEqualTo("投资回报分析报告");
+            assertThat(reader.getInfo().get("Subject")).contains("测算方案", "投资建议");
+            assertThat(new String(content, java.nio.charset.StandardCharsets.ISO_8859_1))
+                    .contains("STSong-Light-UniGB-UCS2-H");
+        } finally {
+            reader.close();
+        }
     }
 
     @Test

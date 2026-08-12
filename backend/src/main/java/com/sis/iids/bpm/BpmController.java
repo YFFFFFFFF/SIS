@@ -1,6 +1,8 @@
 package com.sis.iids.bpm;
 
 import com.sis.iids.common.api.ApiResponse;
+import com.sis.iids.common.error.BusinessException;
+import com.sis.iids.common.error.ErrorCode;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -15,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /**
- * R-14 BPM 可配置审批流接口（FR-04-03）。
+ * 当前测试阶段采用固定审批流；定义只读保留用于时间线展示。
  */
 @RestController
 @RequestMapping("/api/v1")
@@ -40,25 +42,29 @@ public class BpmController {
     @PostMapping("/admin/approval-flows")
     @PreAuthorize("hasAnyRole('ADMIN','SYSTEM_ADMINISTRATOR')")
     public ApiResponse<ApprovalFlowResponse> createFlow(@Valid @RequestBody ApprovalFlowRequest request) {
-        return ApiResponse.ok(bpmService.createFlow(request));
+        throw fixedFlowOnly();
     }
 
     @PutMapping("/admin/approval-flows/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','SYSTEM_ADMINISTRATOR')")
     public ApiResponse<ApprovalFlowResponse> updateFlow(@PathVariable Long id,
                                                         @Valid @RequestBody ApprovalFlowRequest request) {
-        return ApiResponse.ok(bpmService.updateFlow(id, request));
+        throw fixedFlowOnly();
     }
 
     @DeleteMapping("/admin/approval-flows/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','SYSTEM_ADMINISTRATOR')")
     public ApiResponse<Void> deleteFlow(@PathVariable Long id) {
-        bpmService.deleteFlow(id);
-        return ApiResponse.ok(null);
+        throw fixedFlowOnly();
     }
 
     @GetMapping("/approval-instances/{instanceId}/timeline")
     public ApiResponse<ApprovalTimelineResponse> timeline(@PathVariable Long instanceId) {
         return ApiResponse.ok(bpmService.timeline(instanceId));
+    }
+
+    private BusinessException fixedFlowOnly() {
+        return new BusinessException(ErrorCode.BAD_REQUEST,
+                "当前测试阶段仅支持固定流程：提交→财务复核→项目经理审批，流程定义暂不可修改");
     }
 }

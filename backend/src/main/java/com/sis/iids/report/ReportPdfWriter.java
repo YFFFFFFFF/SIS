@@ -10,6 +10,7 @@ import com.lowagie.text.Phrase;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
+import com.lowagie.text.pdf.BaseFont;
 import com.sis.iids.calculation.CalculationResultEntity;
 import com.sis.iids.calculation.CashFlowRow;
 import com.sis.iids.calculation.LoanScheduleResponse;
@@ -28,16 +29,16 @@ import java.util.List;
 
 /**
  * PDF 报告 writer（D3 选型 A：OpenPDF）。
- * 内置 Helvetica 字体不支持 CJK，故 PDF 摘要正文使用英文标签；
- * 完整中文报告请使用 Excel 版。结构：封面信息（参数版本与数据来源引用）→
+ * 使用 OpenPDF 内置 CJK 字体生成中文摘要。结构：封面信息（参数版本与数据来源引用）→
  * 指标摘要 → 投资估算 → 现金流量（融资前）→ 利润流向 → 还本付息。
  */
 class ReportPdfWriter {
 
-    private static final Font TITLE = new Font(Font.HELVETICA, 18, Font.BOLD);
-    private static final Font H2 = new Font(Font.HELVETICA, 13, Font.BOLD);
-    private static final Font BODY = new Font(Font.HELVETICA, 10);
-    private static final Font SMALL = new Font(Font.HELVETICA, 8);
+    private static final BaseFont CJK = cjkFont();
+    private static final Font TITLE = new Font(CJK, 18, Font.BOLD);
+    private static final Font H2 = new Font(CJK, 13, Font.BOLD);
+    private static final Font BODY = new Font(CJK, 10);
+    private static final Font SMALL = new Font(CJK, 8);
 
     void write(Path filePath, ReportContent c) {
         try {
@@ -45,6 +46,8 @@ class ReportPdfWriter {
             try (OutputStream out = Files.newOutputStream(filePath)) {
                 Document doc = new Document(PageSize.A4, 40, 40, 50, 50);
                 PdfWriter.getInstance(doc, out);
+                doc.addTitle("投资回报分析报告");
+                doc.addSubject("测算方案、核心指标、投资建议和现金流摘要");
                 doc.open();
                 writeCover(doc, c);
                 writeMetrics(doc, c.metrics());
@@ -60,13 +63,13 @@ class ReportPdfWriter {
     }
 
     private void writeCover(Document doc, ReportContent c) throws DocumentException {
-        doc.add(new Paragraph("Investment Return Analysis Report", TITLE));
+        doc.add(new Paragraph("投资回报分析报告", TITLE));
         doc.add(new Paragraph(" ", BODY));
         PdfPTable t = new PdfPTable(2);
         t.setWidthPercentage(80);
-        metaRow(t, "Project", c.project() == null ? "-" : c.project().getCode() + " " + safeAscii(c.project().getName()));
-        metaRow(t, "Scenario", safeAscii(c.scenario().getName()) + " (v" + c.scenario().getVersionNo() + ")");
-        metaRow(t, "Horizon / Construction", c.scenario().getHorizonYears() + " yrs / " + c.scenario().getConstructionYears() + " yrs");
+        metaRow(t, "项目", c.project() == null ? "-" : c.project().getCode() + " " + c.project().getName());
+        metaRow(t, "测算方案", c.scenario().getName() + "（版本 " + c.scenario().getVersionNo() + "）");
+        metaRow(t, "评价期 / 建设期", c.scenario().getHorizonYears() + " 年 / " + c.scenario().getConstructionYears() + " 年");
         metaRow(t, "Task ID", String.valueOf(c.task().getId()));
         CalculationResultEntity first = c.metrics().get(0);
         metaRow(t, "Formula Version", first.getFormulaVersion());
@@ -76,7 +79,7 @@ class ReportPdfWriter {
         metaRow(t, "Generated At", java.time.LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
         doc.add(t);
         doc.add(new Paragraph(" ", BODY));
-        Paragraph advice = new Paragraph("Conclusion: " + toAscii(ReportService.buildAdvice(c.metrics())), BODY);
+        Paragraph advice = new Paragraph("投资建议：" + ReportService.buildAdvice(c.metrics()), BODY);
         doc.add(advice);
         if (c.latestSensitivity() != null) {
             doc.add(new Paragraph("Latest sensitivity run #%d on %s (base value %s).".formatted(
@@ -87,8 +90,8 @@ class ReportPdfWriter {
     }
 
     private void writeMetrics(Document doc, List<CalculationResultEntity> metrics) throws DocumentException {
-        doc.add(new Paragraph("1. Key Metrics", H2));
-        PdfPTable t = table(2, "Metric", "Value");
+        doc.add(new Paragraph("1. 核心指标", H2));
+        PdfPTable t = table(2, "指标", "数值");
         for (CalculationResultEntity m : metrics) {
             cell(t, m.getMetricCode());
             cell(t, fmt(m.getMetricValue()));
@@ -97,8 +100,8 @@ class ReportPdfWriter {
     }
 
     private void writeInvestment(Document doc, ReportContent c) throws DocumentException {
-        doc.add(new Paragraph("2. Investment Estimate", H2));
-        PdfPTable t = table(2, "Item", "Amount");
+        doc.add(new Paragraph("2. 投资估算", H2));
+        PdfPTable t = table(2, "项目", "金额");
         cell(t, "Construction Total");
         cell(t, fmt(c.investment().constructionTotal()));
         cell(t, "Interest During Construction");
@@ -113,8 +116,8 @@ class ReportPdfWriter {
     }
 
     private void writeCashFlow(Document doc, List<CashFlowRow> rows) throws DocumentException {
-        doc.add(new Paragraph("3. Project Cash Flow (Pre-financing)", H2));
-        PdfPTable t = table(5, "Period", "Inflow", "Outflow", "Net CF", "Cumulative");
+        doc.add(new Paragraph("3. 项目投资现金流量（融资前）", H2));
+        PdfPTable t = table(5, "期次", "流入", "流出", "净现金流", "累计净现金流");
         rows.stream().filter(r -> MetricCodes.ST_PROJECT.equals(r.getStatementType())).forEach(r -> {
             cell(t, String.valueOf(r.getPeriodNo()));
             cell(t, fmt(r.getInflow()));
@@ -126,23 +129,23 @@ class ReportPdfWriter {
     }
 
     private void writeProfitFlow(Document doc, List<ProfitFlowResponse> items) throws DocumentException {
-        doc.add(new Paragraph("4. Profit Flow (Full-capacity Year)", H2));
-        PdfPTable t = table(3, "Seq", "Item", "Amount");
+        doc.add(new Paragraph("4. 利润流向（达产年）", H2));
+        PdfPTable t = table(3, "序号", "项目", "金额");
         for (ProfitFlowResponse item : items) {
             cell(t, String.valueOf(item.seq()));
-            cell(t, toAscii(item.label()));
+            cell(t, item.label());
             cell(t, fmt(item.value()));
         }
         doc.add(t);
     }
 
     private void writeLoanSchedule(Document doc, List<LoanScheduleResponse> items) throws DocumentException {
-        doc.add(new Paragraph("5. Debt Service Schedule", H2));
+        doc.add(new Paragraph("5. 还本付息计划", H2));
         if (items.isEmpty()) {
-            doc.add(new Paragraph("No interest-bearing debt.", BODY));
+            doc.add(new Paragraph("本方案无有息债务。", BODY));
             return;
         }
-        PdfPTable t = table(5, "Year", "Opening", "Principal", "Interest", "Closing");
+        PdfPTable t = table(5, "年度", "期初余额", "偿还本金", "支付利息", "期末余额");
         for (LoanScheduleResponse item : items) {
             cell(t, String.valueOf(item.yearNo()));
             cell(t, fmt(item.openingBalance()));
@@ -168,7 +171,7 @@ class ReportPdfWriter {
         t.setSpacingBefore(6f);
         t.setSpacingAfter(12f);
         for (String h : headers) {
-            PdfPCell c = new PdfPCell(new Phrase(h, new Font(Font.HELVETICA, 9, Font.BOLD)));
+            PdfPCell c = new PdfPCell(new Phrase(h, new Font(CJK, 9, Font.BOLD)));
             c.setHorizontalAlignment(Element.ALIGN_CENTER);
             c.setBackgroundColor(new java.awt.Color(235, 238, 245));
             t.addCell(c);
@@ -186,19 +189,11 @@ class ReportPdfWriter {
         return v == null ? "-" : v.stripTrailingZeros().toPlainString();
     }
 
-    /** CJK 字符替换为 '?'，避免 Helvetica 渲染出乱码方块。 */
-    private String toAscii(String s) {
-        if (s == null) {
-            return "-";
+    private static BaseFont cjkFont() {
+        try {
+            return BaseFont.createFont("STSong-Light", "UniGB-UCS2-H", BaseFont.NOT_EMBEDDED);
+        } catch (DocumentException | IOException ex) {
+            throw new ExceptionInInitializerError(ex);
         }
-        StringBuilder sb = new StringBuilder(s.length());
-        for (char ch : s.toCharArray()) {
-            sb.append(ch < 128 ? ch : '?');
-        }
-        return sb.toString();
-    }
-
-    private String safeAscii(String s) {
-        return toAscii(s);
     }
 }

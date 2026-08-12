@@ -11,4 +11,8 @@ public interface ScenarioPresenceRepository extends JpaRepository<ScenarioPresen
     Optional<ScenarioPresence> findByScenarioIdAndUserId(Long scenarioId, Long userId);
 
     List<ScenarioPresence> findByScenarioIdAndLastSeenAtAfter(Long scenarioId, LocalDateTime since);
+
+    void deleteByScenarioIdAndUserId(Long scenarioId, Long userId);
+
+    void deleteByScenarioIdAndLastSeenAtBefore(Long scenarioId, LocalDateTime before);
 }

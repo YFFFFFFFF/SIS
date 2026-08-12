@@ -23,6 +23,9 @@ http.interceptors.response.use(
     return response
   },
   (error: AxiosError<ApiResponse<unknown>>) => {
+    if (error.response?.status === 401 && typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('iids:unauthorized'))
+    }
     const message = error.response?.data?.message || error.message || 'Request failed'
     return Promise.reject(new Error(message))
   }

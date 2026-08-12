@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -29,6 +31,15 @@ class CollabApiIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private ScenarioPresenceRepository presenceRepository;
+
+    @Autowired
+    private ScenarioCommentRepository commentRepository;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @Test
     void commentWithMentionsAndChangeTimeline() throws Exception {
@@ -94,11 +105,86 @@ class CollabApiIntegrationTest {
     }
 
     @Test
+    @WithMockUser(username = "comment_author", roles = "INVESTMENT_ANALYST")
+    void commentAuthorCanDeleteOwnComment() throws Exception {
+        Long scenarioId = createScenario("SIS-R15-C2");
+        String response = mockMvc.perform(post("/api/v1/scenarios/{id}/comments", scenarioId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"content\":\"待删除评论\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        Long commentId = extractId(response);
+
+        mockMvc.perform(delete("/api/v1/scenarios/{id}/comments/{commentId}", scenarioId, commentId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.deleted").value(true));
+
+        mockMvc.perform(get("/api/v1/scenarios/{id}/comments", scenarioId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(0)));
+        mockMvc.perform(get("/api/v1/scenarios/{id}/changes", scenarioId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].changeType").value("COMMENT_DELETED"));
+    }
+
+    @Test
+    @WithMockUser(username = "other_user", roles = "INVESTMENT_ANALYST")
+    void nonAuthorCannotDeleteComment() throws Exception {
+        Long scenarioId = createScenario("SIS-R15-C3");
+        ScenarioComment comment = new ScenarioComment();
+        comment.setScenarioId(scenarioId);
+        comment.setContent("他人评论");
+        comment.setAuthorName("comment_author");
+        comment = commentRepository.save(comment);
+
+        mockMvc.perform(delete("/api/v1/scenarios/{id}/comments/{commentId}", scenarioId, comment.getId()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"))
+                .andExpect(jsonPath("$.message").value("只能删除自己发表的评论"));
+    }
+
+    @Test
+    void leaveRemovesPresenceAndListingPurgesExpiredRows() throws Exception {
+        Long scenarioId = createScenario("SIS-R15-P2");
+        mockMvc.perform(post("/api/v1/scenarios/{id}/presence", scenarioId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userId\":11,\"userName\":\"active_user\"}"))
+                .andExpect(status().isOk());
+        mockMvc.perform(delete("/api/v1/scenarios/{id}/presence/{userId}", scenarioId, 11))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(0)));
+
+        mockMvc.perform(post("/api/v1/scenarios/{id}/presence", scenarioId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userId\":12,\"userName\":\"stale_user\"}"))
+                .andExpect(status().isOk());
+        jdbcTemplate.update("update scenario_presence set last_seen_at = ? where scenario_id = ? and user_id = ?",
+                java.sql.Timestamp.valueOf(java.time.LocalDateTime.now().minusMinutes(5)), scenarioId, 12L);
+
+        mockMvc.perform(get("/api/v1/scenarios/{id}/presence", scenarioId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(0)));
+        org.assertj.core.api.Assertions.assertThat(presenceRepository.findByScenarioIdAndUserId(scenarioId, 12L)).isEmpty();
+    }
+
+    @Test
     void sseStreamStartsAsync() throws Exception {
         Long scenarioId = createScenario("SIS-R15-S1");
-        mockMvc.perform(get("/api/v1/scenarios/{id}/collab/stream", scenarioId))
+        String ticketResponse = mockMvc.perform(post("/api/v1/scenarios/{id}/collab/tickets", scenarioId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.ticket").isNotEmpty())
+                .andReturn().getResponse().getContentAsString();
+        String ticket = ticketResponse.replaceAll("(?s).*?\\\"ticket\\\":\\\"([^\\\"]+)\\\".*", "$1");
+        mockMvc.perform(get("/api/v1/scenarios/{id}/collab/stream", scenarioId).param("ticket", ticket))
                 .andExpect(request().asyncStarted())
                 .andReturn();
+    }
+
+    @Test
+    void sseTicketIsRequiredAndSingleUse() throws Exception {
+        Long scenarioId = createScenario("SIS-R15-S2");
+        mockMvc.perform(get("/api/v1/scenarios/{id}/collab/stream", scenarioId).param("ticket", "invalid"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

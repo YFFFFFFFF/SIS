@@ -104,7 +104,10 @@
             <div v-for="c in [...comments].reverse()" :key="c.id" class="cmt">
               <span class="cm-avatar" :data-n="initialOf(c.authorName)">{{ initialOf(c.authorName) }}</span>
               <div class="cm-body">
-                <div class="cm-head"><b>{{ c.authorName }}</b><span class="cm-time">{{ fmtTime(c.createdAt) }}</span></div>
+                <div class="cm-head">
+                  <b>{{ c.authorName }}</b><span class="cm-time">{{ fmtTime(c.createdAt) }}</span>
+                  <el-button v-if="canDeleteComment(c)" type="danger" text size="small" @click="deleteComment(c)">删除</el-button>
+                </div>
                 <div class="cm-text" v-html="highlight(c.content)" />
               </div>
             </div>
@@ -123,7 +126,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { apiGet, apiPost } from '@/shared/api/http'
+import { apiDelete, apiGet, apiPost } from '@/shared/api/http'
 import type { CollabFieldItem, FieldLock, ScenarioChange, ScenarioComment, ScenarioPresence } from '@/shared/types/domain'
 import { useAuthStore } from '@/stores/auth'
 import { useWorkbenchStore } from '@/stores/workbench'
@@ -223,19 +226,35 @@ async function postComment() {
   finally { posting.value = false }
 }
 
-function connectSse() {
+function canDeleteComment(comment: ScenarioComment) {
+  return isAdmin.value || comment.authorName === auth.user?.username
+}
+
+async function deleteComment(comment: ScenarioComment) {
+  if (!wb.selectedScenario) return
+  try {
+    await apiDelete(`/scenarios/${wb.selectedScenario.id}/comments/${comment.id}`)
+    comments.value = comments.value.filter(item => item.id !== comment.id)
+  } catch (err) { ElMessage.error(err instanceof Error ? err.message : '删除评论失败') }
+}
+
+async function connectSse() {
   disconnect()
   if (!wb.selectedScenario) return
-  const token = localStorage.getItem('iids.auth.token')
   const base = import.meta.env.VITE_API_BASE_URL ?? '/api/v1'
-  const url = `${base}/scenarios/${wb.selectedScenario.id}/collab/stream${token ? `?token=${token}` : ''}`
   try {
+    const credential = await apiPost<{ ticket: string; expiresAt: string }>(`/scenarios/${wb.selectedScenario.id}/collab/tickets`)
+    const url = `${base}/scenarios/${wb.selectedScenario.id}/collab/stream?ticket=${encodeURIComponent(credential.ticket)}`
     eventSource = new EventSource(url)
     eventSource.onopen = () => { sseConnected.value = true }
     eventSource.onerror = () => { sseConnected.value = false }
     eventSource.addEventListener('comment', (e) => {
       const c = JSON.parse((e as MessageEvent).data) as ScenarioComment
       if (!comments.value.some(x => x.id === c.id)) comments.value.push(c)
+    })
+    eventSource.addEventListener('comment-deleted', (e) => {
+      const payload = JSON.parse((e as MessageEvent).data) as { commentId: number }
+      comments.value = comments.value.filter(item => item.id !== payload.commentId)
     })
     eventSource.addEventListener('change', (e) => {
       const c = JSON.parse((e as MessageEvent).data) as ScenarioChange
@@ -264,6 +283,10 @@ function startHeartbeat() {
 
 function disconnect() { eventSource?.close(); eventSource = null; sseConnected.value = false }
 function stopHeartbeat() { if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null } }
+function leavePresence(scenarioId: number | null | undefined) {
+  if (!scenarioId || !myId.value) return
+  void apiDelete(`/scenarios/${scenarioId}/presence/${myId.value}`).catch(() => {})
+}
 
 function hashName(name: string) {
   let h = 0
@@ -277,13 +300,16 @@ function highlight(content: string) {
 }
 function changeTypeName(t: string) {
   return {
-    COMMENT_ADDED: '发表评论', FIELD_UPDATED: '更新字段', LOCK_ACQUIRED: '锁定字段',
+    COMMENT_ADDED: '发表评论', COMMENT_DELETED: '删除评论', FIELD_UPDATED: '更新字段', LOCK_ACQUIRED: '锁定字段',
     LOCK_RELEASED: '释放字段', CALCULATION_RUN: '运行测算', APPROVAL_ACTION: '审批操作'
   }[t] ?? t
 }
 
-watch(() => wb.selectedScenario?.id, () => { loadFields(); loadSocial(); connectSse(); startHeartbeat() }, { immediate: true })
-onBeforeUnmount(() => { disconnect(); stopHeartbeat() })
+watch(() => wb.selectedScenario?.id, (_, previousScenarioId) => {
+  leavePresence(previousScenarioId)
+  loadFields(); loadSocial(); connectSse(); startHeartbeat()
+}, { immediate: true })
+onBeforeUnmount(() => { leavePresence(wb.selectedScenario?.id); disconnect(); stopHeartbeat() })
 </script>
 
 <style scoped>

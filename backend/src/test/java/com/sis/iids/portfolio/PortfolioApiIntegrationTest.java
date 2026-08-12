@@ -35,6 +35,15 @@ class PortfolioApiIntegrationTest {
     private com.sis.iids.calculation.CalculationService calculationService;
 
     @Test
+    void rejectsRunWhenNoCalculatedCandidatesExist() throws Exception {
+        mockMvc.perform(post("/api/v1/portfolio-runs")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"budget\":250000}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message", containsString("没有已测算成功的方案")));
+    }
+
+    @Test
     void optimizesAndPersistsRun() throws Exception {
         // 两个已测算方案：高收益（price=140）与低收益（price=90）
         createCalculatedScenario("SIS-R13-HI", 140);

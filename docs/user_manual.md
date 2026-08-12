@@ -67,12 +67,16 @@ docker compose up --build
 
 ## 2. 登录
 
-系统初始化后有两个本地种子账号：
+系统初始化后提供以下本地种子账号，默认密码均为 `Password123!`：
 
 | 用户名 | 密码 | 角色 |
 | --- | --- | --- |
-| `analyst` | `Password123!` | 投资分析员 |
+| `investment_analyst` | `Password123!` | 投资分析师 |
+| `finance_specialist` | `Password123!` | 财务专员 |
+| `technical_engineer` | `Password123!` | 技术工程师 |
+| `project_manager` | `Password123!` | 项目经理 |
 | `admin` | `Password123!` | 系统管理员 |
+| `analyst` | `Password123!` | 兼容投资分析员 |
 
 操作步骤：
 

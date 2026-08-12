@@ -92,6 +92,7 @@ class OpenApiContractTest {
                 .andExpect(jsonPath("$.paths['/api/v1/scenarios/{scenarioId}/presence'].post").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/scenarios/{scenarioId}/presence'].get").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/scenarios/{scenarioId}/collab/stream'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/scenarios/{scenarioId}/collab/tickets'].post").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/scenarios/{scenarioId}/collab/fields'].get").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/scenarios/{scenarioId}/field-locks'].get").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/scenarios/{scenarioId}/field-locks'].post").exists())

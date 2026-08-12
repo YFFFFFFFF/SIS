@@ -27,6 +27,10 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem(USER_KEY)
   }
 
+  if (typeof window !== 'undefined') {
+    window.addEventListener('iids:unauthorized', logout)
+  }
+
   return { token, user, isAuthenticated, displayName, login, logout }
 })
 

@@ -64,6 +64,22 @@ npm run build
 - `vite build` 退出码为 `0`。
 - 生成 `frontend/dist`。
 
+前端单元测试：
+
+```powershell
+cd E:\SIS\frontend
+npm test
+```
+
+浏览器主流程测试（自动启动前后端，使用本机 Chrome）：
+
+```powershell
+cd E:\SIS\frontend
+npm run test:e2e
+```
+
+验收标准：Vitest 全部通过；Playwright 完成登录、创建项目和刷新后数据持久化验证。
+
 当前已知构建警告：
 
 - `@vueuse/core` 中部分 `/* #__PURE__ */` 注释会被 Rollup 移除。
@@ -196,6 +212,14 @@ docker compose config
 - 使用 `admin` 账号验证 `/api/v1/admin/ping`。
 
 ## 4. 当前已执行验证记录
+
+2026-08-11 已执行：
+
+- `E:\SIS`: `.\scripts\check_test_environment.ps1`，依赖、项目文件、端口和 Chrome 检查通过。
+- `E:\SIS\backend`: `mvn test`，155 项测试全部通过。
+- `E:\SIS\frontend`: `npm test`，2 个测试文件、4 项单元测试全部通过。
+- `E:\SIS\frontend`: `npm run test:e2e`，1 条 Chrome 核心主流程通过，覆盖项目、方案、输入、测算结果和 Excel 报告下载。
+- `E:\SIS\frontend`: `npm run build`，类型检查和生产构建通过。
 
 2026-07-27 已执行：
 
