@@ -2,7 +2,7 @@
   <main class="login-page">
     <section class="login-panel">
       <img class="login-logo" src="../img/logo.png" alt="京东方" />
-      <h1 class="login-system-name">京东方投资测算系统</h1>
+      <h1 class="login-system-name">投资测算系统</h1>
       <el-form class="login-form" label-position="top" @submit.prevent="submit">
         <el-form-item label="用户名">
           <el-input v-model="form.username" autocomplete="username" size="large" placeholder="请输入用户名" />
@@ -31,7 +31,7 @@ const loading = ref(false)
 const error = ref('')
 const form = reactive({ username: 'investment_analyst', password: 'Password123!' })
 
-onMounted(() => { document.title = '京东方投资测算系统 - 登录' })
+onMounted(() => { document.title = '投资测算系统' })
 
 async function submit() {
   loading.value = true

@@ -12,8 +12,8 @@
     <groupId>com.sis</groupId>
     <artifactId>iids</artifactId>
     <version>0.1.0-SNAPSHOT</version>
-    <name>iids</name>
-    <description>Intelligent Investment Decision Support System M1</description>
+    <name>投资测算系统</name>
+    <description>投资测算系统</description>
     <properties>
         <java.version>17</java.version>
         <jjwt.version>0.12.6</jjwt.version>

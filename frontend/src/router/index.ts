@@ -2,7 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import LoginView from '@/views/LoginView.vue'
 
-const SYSTEM = '京东方投资测算系统'
+const SYSTEM = '投资测算系统'
 
 /**
  * R-03 前端路由拆分：业务页按 upgrade_plan §9 拆为独立 view，
@@ -39,8 +39,7 @@ router.beforeEach((to) => {
   return true
 })
 
-// DESIGN.md 全局规则：页签标题 = "京东方{系统名称} - {页面名称}"
+// 系统名称统一固定为“投资测算系统”。
 router.afterEach((to) => {
-  const page = (to.meta.title as string) ?? ''
-  document.title = page ? `${SYSTEM} - ${page}` : SYSTEM
+  document.title = SYSTEM
 })

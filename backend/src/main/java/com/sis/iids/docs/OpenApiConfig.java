@@ -26,7 +26,7 @@ public class OpenApiConfig {
 
         return new OpenAPI()
                 .info(new Info()
-                        .title("智能投资测算与决策支持系统 API")
+                        .title("投资测算系统")
                         .version("0.2.0")
                         .description("M1→PRD 升级（R-02 财务引擎 v2）API 契约，覆盖项目、方案、测算、投资/成本分项、三类报表、利润流向、还本付息、报表、审批和审计流程。"))
                 .components(new Components().addSecuritySchemes(BEARER_AUTH, bearerScheme))
