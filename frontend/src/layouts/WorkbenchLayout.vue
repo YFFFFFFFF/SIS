@@ -3,7 +3,7 @@
     <!-- 顶导（固定 · #005eba） -->
     <header class="app-header">
       <img class="hd-logo" src="../img/logo1.png" alt="京东方" />
-      <span class="hd-title">京东方投资测算系统</span>
+      <span class="hd-title">投资测算系统</span>
       <div class="hd-user">
         <span class="uicon"><el-icon><UserFilled /></el-icon></span>
         <span class="uname">{{ auth.displayName }}</span>

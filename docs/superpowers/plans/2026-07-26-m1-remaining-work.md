@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Complete the remaining M1 MVP scope for the Intelligent Investment Decision Support System after the backend core calculation loop.
+**Goal:** Complete the remaining M1 MVP scope for 投资测算系统 after the backend core calculation loop.
 
 **Architecture:** Continue the modular monolith in `E:\SIS\backend` and add a Vue 3 workbench in `E:\SIS\frontend`. Keep backend modules isolated by business boundary: auth, report, importx, approval, collaboration, calculation, audit. Use TDD per task and commit each completed slice.
 

@@ -23,7 +23,7 @@ class OpenApiContractTest {
         mockMvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.openapi").exists())
-                .andExpect(jsonPath("$.info.title").value("智能投资测算与决策支持系统 API"))
+                .andExpect(jsonPath("$.info.title").value("投资测算系统"))
                 .andExpect(jsonPath("$.info.version").value("0.2.0"))
                 .andExpect(jsonPath("$.components.securitySchemes.bearerAuth.type").value("http"))
                 .andExpect(jsonPath("$.components.securitySchemes.bearerAuth.scheme").value("bearer"))
